@@ -106,7 +106,7 @@ export default function Settings({
               </select>
             </label>
             <label>
-              缩放（1.0 = 100%）
+              界面缩放（写入 [ui] zoom，1.0 = 100%）
               <input
                 type="number"
                 step={0.1}

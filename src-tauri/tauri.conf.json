@@ -13,10 +13,10 @@
     "windows": [
       {
         "title": "Glossa",
-        "width": 1240,
-        "height": 820,
-        "minWidth": 720,
-        "minHeight": 480
+        "width": 1360,
+        "height": 900,
+        "minWidth": 900,
+        "minHeight": 620
       }
     ],
     "security": {

@@ -14,7 +14,7 @@ active_profile = "deepseek"
 [ui]
 # gruvbox-dark | gruvbox-light | catppuccin-mocha | catppuccin-latte
 theme = "catppuccin-mocha"
-zoom = 1.2   # 界面缩放（1.0 = 100%）
+zoom = 1.2   # 界面缩放（1.0 = 100%，建议 0.8-1.8）
 
 [memory]
 # 生词本路径，缺省为平台数据目录下 vocab.json

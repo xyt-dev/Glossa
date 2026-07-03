@@ -1,97 +1,105 @@
-/* ---- 主题调色板（官方色值）------------------------------------------- */
+/* ---- 主题调色板（官方色值 + 组件语义映射）----------------------------- */
 /* Catppuccin Mocha — https://catppuccin.com/palette (default) */
 :root,
 :root[data-theme="catppuccin-mocha"] {
-  --bg: #1e1e2e;          /* base */
-  --bg-panel: #181825;    /* mantle */
-  --bg-surface: #313244;  /* surface0 */
-  --bg-hover: #45475a;    /* surface1 */
-  --bg-active: #45475a;
-  --fg: #cdd6f4;          /* text */
-  --fg-muted: #a6adc8;    /* subtext0 */
-  --fg-faint: #7f849c;    /* overlay1 */
-  --border: #313244;
-  --accent: #cba6f7;      /* mauve */
-  --accent-fg: #11111b;   /* crust */
-  --accent-soft: rgba(203, 166, 247, 0.16);
-  --user-bubble: #313244;
-  --badge-bg: #f9e2af;    /* yellow */
-  --badge-fg: #11111b;
-  --ipa: #94e2d5;         /* teal */
-  --pos: #fab387;         /* peach */
-  --danger: #f38ba8;      /* red */
-  --ok: #a6e3a1;          /* green */
-  --shadow: rgba(17, 17, 27, 0.6);
+  --bg: #1e1e2e;            /* base */
+  --bg-panel: #181825;      /* mantle */
+  --bg-surface: #313244;    /* surface0 */
+  --bg-hover: #45475a;      /* surface1 */
+  --bg-active: #45475a;     /* surface1 */
+  --fg: #cdd6f4;            /* text */
+  --fg-muted: #bac2de;      /* subtext1 */
+  --fg-faint: #7f849c;      /* overlay1 */
+  --border: #45475a;        /* surface1 */
+  --border-strong: #585b70; /* surface2 */
+  --accent: #cba6f7;        /* mauve */
+  --accent-hover: #b4befe;  /* lavender */
+  --accent-fg: #11111b;     /* crust */
+  --accent-soft: rgba(203, 166, 247, 0.18);
+  --user-bubble: #313244;   /* surface0 */
+  --badge-bg: #f9e2af;      /* yellow */
+  --badge-fg: #11111b;      /* crust */
+  --ipa: #94e2d5;           /* teal */
+  --pos: #fab387;           /* peach */
+  --danger: #f38ba8;        /* red */
+  --ok: #a6e3a1;            /* green */
+  --shadow: rgba(17, 17, 27, 0.55);
 }
 
 /* Catppuccin Latte */
 :root[data-theme="catppuccin-latte"] {
-  --bg: #eff1f5;          /* base */
-  --bg-panel: #e6e9ef;    /* mantle */
-  --bg-surface: #e6e9ef;
-  --bg-hover: #ccd0da;    /* surface0 */
-  --bg-active: #ccd0da;
-  --fg: #4c4f69;          /* text */
-  --fg-muted: #6c6f85;    /* subtext0 */
-  --fg-faint: #8c8fa1;    /* overlay1 */
-  --border: #ccd0da;
-  --accent: #8839ef;      /* mauve */
-  --accent-fg: #eff1f5;
+  --bg: #eff1f5;            /* base */
+  --bg-panel: #e6e9ef;      /* mantle */
+  --bg-surface: #dce0e8;    /* crust */
+  --bg-hover: #ccd0da;      /* surface0 */
+  --bg-active: #ccd0da;     /* surface0 */
+  --fg: #4c4f69;            /* text */
+  --fg-muted: #5c5f77;      /* subtext1 */
+  --fg-faint: #8c8fa1;      /* overlay1 */
+  --border: #bcc0cc;        /* surface1 */
+  --border-strong: #acb0be; /* surface2 */
+  --accent: #8839ef;        /* mauve */
+  --accent-hover: #7287fd;  /* lavender */
+  --accent-fg: #eff1f5;     /* base */
   --accent-soft: rgba(136, 57, 239, 0.12);
-  --user-bubble: #dce0e8; /* crust */
-  --badge-bg: #df8e1d;    /* yellow */
-  --badge-fg: #eff1f5;
-  --ipa: #179299;         /* teal */
-  --pos: #fe640b;         /* peach */
-  --danger: #d20f39;
-  --ok: #40a02b;
-  --shadow: rgba(76, 79, 105, 0.25);
+  --user-bubble: #dce0e8;   /* crust */
+  --badge-bg: #df8e1d;      /* yellow */
+  --badge-fg: #4c4f69;      /* text */
+  --ipa: #179299;           /* teal */
+  --pos: #fe640b;           /* peach */
+  --danger: #d20f39;        /* red */
+  --ok: #40a02b;            /* green */
+  --shadow: rgba(76, 79, 105, 0.22);
 }
 
 /* Gruvbox Dark (morhetz) — https://github.com/morhetz/gruvbox */
 :root[data-theme="gruvbox-dark"] {
-  --bg: #282828;          /* bg0 */
-  --bg-panel: #1d2021;    /* bg0_h */
-  --bg-surface: #3c3836;  /* bg1 */
-  --bg-hover: #504945;    /* bg2 */
-  --bg-active: #504945;
-  --fg: #ebdbb2;          /* fg1 */
-  --fg-muted: #d5c4a1;    /* fg2 */
-  --fg-faint: #a89984;    /* fg4 */
-  --border: #504945;      /* bg2 */
-  --accent: #fbf1c7;      /* light0 乳黄 */
-  --accent-fg: #282828;
-  --accent-soft: rgba(251, 241, 199, 0.14);
-  --user-bubble: #3c3836;
-  --badge-bg: #fabd2f;    /* yellow bright */
-  --badge-fg: #1d2021;
-  --ipa: #8ec07c;         /* aqua bright */
-  --pos: #d3869b;         /* purple bright */
-  --danger: #fb4934;
-  --ok: #b8bb26;
-  --shadow: rgba(0, 0, 0, 0.55);
+  --bg: #282828;            /* dark0 */
+  --bg-panel: #1d2021;      /* dark0_hard */
+  --bg-surface: #32302f;    /* dark0_soft */
+  --bg-hover: #3c3836;      /* dark1 */
+  --bg-active: #504945;     /* dark2 */
+  --fg: #ebdbb2;            /* light1 */
+  --fg-muted: #d5c4a1;      /* light2 */
+  --fg-faint: #a89984;      /* light4 */
+  --border: #3c3836;        /* dark1 */
+  --border-strong: #504945; /* dark2 */
+  --accent: #fabd2f;        /* bright yellow */
+  --accent-hover: #fe8019;  /* bright orange */
+  --accent-fg: #1d2021;     /* dark0_hard */
+  --accent-soft: rgba(250, 189, 47, 0.16);
+  --user-bubble: #3c3836;   /* dark1 */
+  --badge-bg: #fabd2f;      /* bright yellow */
+  --badge-fg: #1d2021;      /* dark0_hard */
+  --ipa: #8ec07c;           /* bright aqua */
+  --pos: #fe8019;           /* bright orange */
+  --danger: #fb4934;        /* bright red */
+  --ok: #b8bb26;            /* bright green */
+  --shadow: rgba(29, 32, 33, 0.55);
 }
 
 /* Gruvbox Light (morhetz) */
 :root[data-theme="gruvbox-light"] {
-  --bg: #fbf1c7;          /* bg0 */
-  --bg-panel: #f2e5bc;    /* bg0_s */
-  --bg-surface: #ebdbb2;  /* bg1 */
-  --bg-hover: #d5c4a1;    /* bg2 */
-  --bg-active: #d5c4a1;
-  --fg: #3c3836;          /* fg1 */
-  --fg-muted: #665c54;    /* fg3 */
-  --fg-faint: #7c6f64;    /* fg4 */
-  --border: #d5c4a1;
-  --accent: #d79921;      /* yellow */
-  --accent-fg: #282828;
-  --accent-soft: rgba(215, 153, 33, 0.16);
-  --user-bubble: #ebdbb2;
-  --badge-bg: #b57614;    /* yellow */
-  --badge-fg: #fbf1c7;
-  --ipa: #427b58;         /* aqua */
-  --pos: #8f3f71;         /* purple */
-  --danger: #9d0006;
-  --ok: #79740e;
-  --shadow: rgba(60, 56, 54, 0.25);
+  --bg: #fbf1c7;            /* light0 */
+  --bg-panel: #f2e5bc;      /* light0_soft */
+  --bg-surface: #ebdbb2;    /* light1 */
+  --bg-hover: #d5c4a1;      /* light2 */
+  --bg-active: #d5c4a1;     /* light2 */
+  --fg: #3c3836;            /* dark1 */
+  --fg-muted: #504945;      /* dark2 */
+  --fg-faint: #7c6f64;      /* dark4 */
+  --border: #d5c4a1;        /* light2 */
+  --border-strong: #bdae93; /* light3 */
+  --accent: #b57614;        /* neutral yellow */
+  --accent-hover: #af3a03;  /* neutral orange */
+  --accent-fg: #fbf1c7;     /* light0 */
+  --accent-soft: rgba(181, 118, 20, 0.16);
+  --user-bubble: #ebdbb2;   /* light1 */
+  --badge-bg: #d79921;      /* yellow */
+  --badge-fg: #282828;      /* dark0 */
+  --ipa: #427b58;           /* neutral aqua */
+  --pos: #af3a03;           /* neutral orange */
+  --danger: #9d0006;        /* neutral red */
+  --ok: #79740e;            /* neutral green */
+  --shadow: rgba(60, 56, 54, 0.2);
 }

@@ -59,6 +59,39 @@ npm --prefix ui install            # 首次
 cargo tauri build                  # 产物在 target/release/bundle/
 ```
 
+### 从源码安装为系统命令（Linux）
+
+想把 Glossa 作为 `glossa` 命令安装到系统里，可以在仓库根目录执行：
+
+```bash
+# 1) 安装 Linux 运行/构建依赖（按发行版三选一）
+sudo pacman -S webkit2gtk-4.1 base-devel
+# sudo apt install libwebkit2gtk-4.1-dev build-essential libssl-dev librsvg2-dev
+# sudo dnf install webkit2gtk4.1-devel openssl-devel
+
+# 2) 构建前端静态资源，供 Tauri 二进制嵌入
+npm --prefix ui ci
+npm --prefix ui run build
+
+# 3) 安装 GUI 启动命令到 Cargo bin 目录。注意 path 是 src-tauri，不是仓库根目录。
+cargo install --path src-tauri --locked --features custom-protocol --force
+glossa
+```
+
+`cargo install` 默认把二进制放到 `~/.cargo/bin/glossa`。如果终端找不到 `glossa`，
+先确认 `~/.cargo/bin` 已加入 `PATH`：
+
+```bash
+echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.profile
+source ~/.profile
+```
+
+如果希望放到全局 `/usr/local/bin`，也可以在 `cargo install` 后执行：
+
+```bash
+sudo install -Dm755 "$HOME/.cargo/bin/glossa" /usr/local/bin/glossa
+```
+
 ## 开发
 
 ```bash
@@ -71,6 +104,14 @@ cargo test -p kernel   # 核心库测试（wiremock 本地 mock，无需真实 k
 首次运行生成带注释的 `~/.config/glossa/config.toml`（Windows：`%APPDATA%\glossa\`，
 macOS：`~/Library/Application Support/glossa/`），也可在应用内「设置」修改：
 API profiles、模型、effort、IELTS band 下限、默认模式、主题、界面缩放（`[ui] zoom`）。
+
+`zoom` 也可以直接写在配置文件里，例如：
+
+```toml
+[ui]
+theme = "catppuccin-mocha"
+zoom = 1.2
+```
 API key 直接写入 `api_key`，或留空并导出环境变量（默认 `DEEPSEEK_API_KEY`）。
 
 数据文件（生词本 `vocab.json`、会话 `sessions/*.json`）在平台数据目录
