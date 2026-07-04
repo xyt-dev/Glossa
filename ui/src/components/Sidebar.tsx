@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { uiScale } from "../platform";
 import type { SessionMeta } from "../types";
+import Logo from "./Logo";
 
 interface CtxMenu {
   x: number;
@@ -71,7 +72,9 @@ export default function Sidebar({
   return (
     <aside className="sidebar">
       <div className="sidebar-head">
-        <span className="logo">译</span>
+        <span className="logo">
+          <Logo size={17} />
+        </span>
         <span className="app-name">Glossa</span>
         <button
           className="sidebar-collapse"

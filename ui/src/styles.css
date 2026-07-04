@@ -218,13 +218,17 @@ input[type="number"]::-webkit-outer-spin-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  background: var(--accent);
+  width: 27px;
+  height: 27px;
+  border-radius: 8px;
+  /* 细微的对角光感，避免纯平色块的呆板 */
+  background: linear-gradient(
+    150deg,
+    color-mix(in srgb, var(--accent) 88%, #fff) 0%,
+    var(--accent) 55%,
+    color-mix(in srgb, var(--accent) 84%, #000) 100%
+  );
   color: var(--accent-fg);
-  font-weight: 700;
-  font-size: 20px;
   box-shadow: 0 6px 18px var(--accent-soft);
 }
 
