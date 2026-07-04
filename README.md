@@ -1,14 +1,16 @@
 <div align="center">
 
-<img src="ui/public/icon.svg" width="104" height="104" alt="Glossa" />
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/wordmark-dark.png" />
+  <img src="docs/wordmark-light.png" width="300" alt="Glossa" />
+</picture>
 
-# Glossa
+<br/>
 
 **不只是翻译，是一位懂你水平的英语私教。**
 
-翻译任何中英文本，Glossa 会挑出值得学的词汇和地道表达，
-带音标、例句、母语者用法讲给你听 —— 并记住你标记过的每一个生词，
-让讲解越来越贴合你的真实水平。
+逐句对照翻译，**卡片式**讲解每个生词与地道表达；**记住**你标记的每一个词，越用越懂你的水平。
+随时一键切到**对话** —— 就着同一段翻译继续追问，学习与 AI 私教**共享上下文，无缝切换**。
 
 <br/>
 
@@ -26,7 +28,7 @@
 
 ---
 
-## ✨ 一次编写，处处运行
+## ✨ 全平台使用
 
 > **同一个 Glossa，桌面、浏览器、手机无缝流转 —— 电脑上标的生词，手机打开就在。**
 
@@ -112,7 +114,7 @@ src-tauri        桌面适配：Tauri 2
 ui               React 19 + Vite + TypeScript
 ```
 
-**一套逻辑，处处运行 —— 这是 Glossa 能同时做好桌面、Web 和移动端的原因。**
+**一套核心逻辑，桌面 / Web / 移动端共享 —— 这是 Glossa 能在所有平台保持一致的原因。**
 
 ## 从源码构建
 
