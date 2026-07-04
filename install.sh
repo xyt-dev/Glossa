@@ -55,6 +55,7 @@ case "$OS" in
 set -eu
 app="${GLOSSA_APPIMAGE:-$HOME/.local/lib/glossa/glossa.AppImage}"
 export WEBKIT_DISABLE_DMABUF_RENDERER="${WEBKIT_DISABLE_DMABUF_RENDERER:-1}"
+export WEBKIT_DISABLE_COMPOSITING_MODE="${WEBKIT_DISABLE_COMPOSITING_MODE:-1}"
 exec "$app" "$@"
 EOF
     chmod +x "$bin.download"
