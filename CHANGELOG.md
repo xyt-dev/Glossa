@@ -1,5 +1,51 @@
 # Change Log
 
+## Unreleased
+
+### 重构：翻译结果 schema（逐句对照 + 独立 native 表达卡）
+
+- schema 新增 `sentences: [{src, dst}]` 逐句对照；多句时逐句渲染（左侧竖线原句 + 译文），
+  单句仍显示整段译文。`translation` 与 `sentences` 均为空视为解析失败，触发修复重试。
+- **native 用法语义修正**：不再是每个单词的附属字段，而是独立的 `usages` 卡片——
+  仅当原句中确实出现值得学习的 native 表达（习语/固定搭配/句式）时输出（0~3 个，宁缺毋滥），
+  每个 usage 带中文讲解 + 例句对照，卡片带 Native 徽标与「◇ 用法」标记按钮。
+- word 卡只保留「☆ 生词」按钮（词与用法彻底分离）；每个词要求 1~2 条例句对照。
+- `WordEntry.native_usage` 保留为 legacy 字段，仅用于渲染旧会话；新 prompt schema 不再包含。
+- 验证：`cargo test -p kernel`（27 passed，新增 sentences/usages 解析与空结果拒绝测试）、
+  注入新 schema 预览会话启动截图确认渲染。
+
+### 修复（v0.2.0 审查项）
+
+- 最小窗口尺寸 1100×800 → 960×640：1366×768 等小屏放不下 800 高，且无边框窗口没有系统兜底。
+- macOS 补 `app.macOSPrivateApi: true`：否则 `transparent: true` 在 macOS 不生效，圆角四角为实色。
+- legacy 配置迁移：v0.1 的 `profile.effort`（现为 `#[serde(skip)]` 运行时字段，TOML 中会被静默忽略）
+  自动迁移为 `chat_effort` 并回写配置文件。
+- prompt 残留语义修正：删除"反复标记的词说明其真实水平"（`marked_count` 已移除，记录里没有次数）。
+
+### 新增
+
+- `Profile.provider`（`deepseek` | `openai`）显式指定 thinking 兼容层，缺省仍按 base_url 嗅探；
+  设置面板提供下拉，聚合商 URL 含 "deepseek" 误判时可显式覆盖。
+- 生词本条目支持删除（调用已有 unmark 命令）。
+- **句子收藏**：新增 `MarkKind::Sentence`，句对卡带「☆ 句子」按钮，`word` 存原句、`meaning` 存译文；
+  生词本以青色「句子」chip 展示，可搜索、可删除，并进入 memory 上下文供模型判断用户句式水平。
+
+### UI 打磨
+
+- 卡片体系：词卡「词」徽标 + 青色左线，Native 卡绿色，句卡主题色；词卡排在 Native 卡之前；
+  句卡原句 20px 主色、译文 19px 次色。
+- 输入栏三件套（模式开关/输入框/发送）等高对齐，圆角统一 10px。
+- 侧边栏 18px 字号；生词本图标改为与 ⚙ 同风格的 Nerd Font 书本字形并等宽对齐。
+- **自绘 Dropdown 组件**替换全部原生 `<select>`（WebKitGTK 弹出层无法用 CSS 主题化）：
+  fixed 定位逃出弹窗滚动裁剪、最大高度 60vh、下方空间不足自动向上展开、选中项主题色高亮。
+- **主题化右键菜单**：全局屏蔽 webview 浏览器菜单（输入框保留粘贴菜单）；
+  会话 tab 右键出「重命名/删除」自绘菜单，✎ 与 × 按钮移除（双击改名保留）。
+- 重命名不再更新 `updated` 时间戳，改名后 tab 不会跳到列表顶部（kernel 层修复 + 测试）。
+- **删除确认**：删除会话、删除生词本条目均弹出主题化确认对话框（wry 无原生 confirm），
+  Esc 取消 / Enter 确认。
+- memory 上下文修复：usage 条目讲解存于 `native_usage`，序列化时回退填入 `meaning`，
+  不再给模型发 null；system prompt 说明三类 kind 的含义。
+
 ## v0.2.0 - 2026-07-03
 
 ### 修复：安装版启动白屏

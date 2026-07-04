@@ -1,5 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { SessionMeta } from "../types";
+
+interface CtxMenu {
+  x: number;
+  y: number;
+  id: string;
+  title: string;
+}
 
 interface Props {
   sessions: SessionMeta[];
@@ -36,12 +43,27 @@ export default function Sidebar({
 }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [menu, setMenu] = useState<CtxMenu | null>(null);
 
   const commitRename = (id: string) => {
     const title = draft.trim();
     setEditingId(null);
     if (title) onRename(id, title);
   };
+
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    window.addEventListener("mousedown", close);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", close);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menu]);
 
   return (
     <aside className="sidebar">
@@ -62,6 +84,15 @@ export default function Sidebar({
               setEditingId(s.id);
               setDraft(s.title);
             }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setMenu({
+                x: Math.min(e.clientX, window.innerWidth - 170),
+                y: Math.min(e.clientY, window.innerHeight - 110),
+                id: s.id,
+                title: s.title,
+              });
+            }}
             title={s.title}
           >
             {editingId === s.id ? (
@@ -81,27 +112,43 @@ export default function Sidebar({
               <>
                 <span className="session-title">{s.title}</span>
                 <span className="session-date">{shortDate(s.updated)}</span>
-                <button
-                  className="session-delete"
-                  title="删除会话"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete(s.id);
-                  }}
-                >
-                  ×
-                </button>
               </>
             )}
           </div>
         ))}
       </nav>
+      {menu && (
+        <div
+          className="context-menu"
+          style={{ left: menu.x, top: menu.y }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => {
+              setEditingId(menu.id);
+              setDraft(menu.title);
+              setMenu(null);
+            }}
+          >
+            重命名
+          </button>
+          <button
+            className="danger"
+            onClick={() => {
+              onDelete(menu.id);
+              setMenu(null);
+            }}
+          >
+            删除
+          </button>
+        </div>
+      )}
       <div className="sidebar-foot">
         <button className="settings-btn" onClick={onVocab}>
-          📚 生词本
+          <span className="btn-icon">{""}</span>生词本
         </button>
         <button className="settings-btn" onClick={onSettings}>
-          ⚙ 设置
+          <span className="btn-icon">⚙</span>设置
         </button>
       </div>
     </aside>

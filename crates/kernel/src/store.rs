@@ -118,7 +118,8 @@ impl SessionStore {
     pub fn rename(&self, id: &str, title: &str) -> Result<Session> {
         let mut s = self.load(id)?;
         s.title = title.trim().to_string();
-        s.updated = chrono::Utc::now().to_rfc3339();
+        // deliberately NOT bumping `updated`: renaming must not re-sort the
+        // session list (list() orders by updated desc)
         self.save(&s)?;
         Ok(s)
     }
@@ -173,5 +174,20 @@ mod tests {
         store.delete(&a.id).unwrap();
         assert_eq!(store.list().unwrap().len(), 1);
         assert!(matches!(store.load(&a.id), Err(Error::SessionNotFound(_))));
+    }
+
+    #[test]
+    fn rename_keeps_list_order() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = SessionStore::new(dir.path().join("sessions"));
+        let a = store.create().unwrap();
+        let mut b = store.create().unwrap();
+        b.updated = chrono::Utc::now().to_rfc3339();
+        store.save(&b).unwrap(); // b is most recent
+        let renamed = store.rename(&a.id, "改名了").unwrap();
+        assert_eq!(renamed.updated, a.updated); // timestamp untouched
+        let list = store.list().unwrap();
+        assert_eq!(list[0].id, b.id); // order unchanged, a did not jump to front
+        assert_eq!(list[1].title, "改名了");
     }
 }

@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
-import type { VocabEntry, VocabMemory } from "../types";
+import type { MarkKind, VocabEntry, VocabMemory } from "../types";
+import Dropdown from "./Dropdown";
 
 type SortMode = "added" | "alpha";
 
 interface Props {
   memory: VocabMemory;
   onClose: () => void;
+  onRemove: (word: string, kind: MarkKind) => void;
 }
 
 interface ScoredEntry {
@@ -71,7 +73,7 @@ function formatDate(iso: string): string {
 }
 
 
-export default function VocabBook({ memory, onClose }: Props) {
+export default function VocabBook({ memory, onClose, onRemove }: Props) {
   const [query, setQuery] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("added");
   const normalizedQuery = normalize(query);
@@ -124,15 +126,17 @@ export default function VocabBook({ memory, onClose }: Props) {
             placeholder="模糊搜索单词、释义、native 用法或上下文…"
             autoFocus
           />
-          <select
+          <Dropdown
+            className="vocab-sort"
             value={sortMode}
             disabled={Boolean(normalizedQuery)}
-            onChange={(e) => setSortMode(e.target.value as SortMode)}
             title={normalizedQuery ? "搜索时按匹配度排序" : "排序方式"}
-          >
-            <option value="added">添加顺序</option>
-            <option value="alpha">字母顺序</option>
-          </select>
+            options={[
+              { value: "added", label: "添加顺序" },
+              { value: "alpha", label: "字母顺序" },
+            ]}
+            onChange={(v) => setSortMode(v as SortMode)}
+          />
         </div>
         {normalizedQuery && <div className="vocab-search-note">搜索结果已按匹配度排序</div>}
 
@@ -151,8 +155,17 @@ export default function VocabBook({ memory, onClose }: Props) {
                     {entry.pos && <span className="pos">{entry.pos}</span>}
                   </div>
                   <div className="vocab-meta">
-                    <span className={`vocab-kind ${entry.kind}`}>{entry.kind === "word" ? "生词" : "用法"}</span>
+                    <span className={`vocab-kind ${entry.kind}`}>
+                      {entry.kind === "word" ? "生词" : entry.kind === "usage" ? "用法" : "句子"}
+                    </span>
                     <span>{formatDate(entry.first_marked)}</span>
+                    <button
+                      className="vocab-remove"
+                      title="从生词本删除"
+                      onClick={() => onRemove(entry.word, entry.kind)}
+                    >
+                      ×
+                    </button>
                   </div>
                 </div>
 

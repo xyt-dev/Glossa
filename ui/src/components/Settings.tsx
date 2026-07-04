@@ -1,6 +1,15 @@
 import { useState } from "react";
 import type { Config, Mode, Profile } from "../types";
 import { THEMES } from "../types";
+import Dropdown from "./Dropdown";
+
+const EFFORT_OPTIONS = [
+  { value: "", label: "no thinking" },
+  { value: "low", label: "low" },
+  { value: "medium", label: "medium" },
+  { value: "high", label: "high" },
+  { value: "xhigh", label: "xhigh" },
+];
 
 interface Props {
   config: Config;
@@ -18,6 +27,7 @@ const emptyProfile = (): Profile => ({
   model: "",
   translate_effort: null,
   chat_effort: null,
+  provider: null,
   temperature: null,
   extra: null,
 });
@@ -91,20 +101,14 @@ export default function Settings({
             <h3>外观</h3>
             <label>
               主题
-              <select
+              <Dropdown
                 value={draft.ui.theme}
-                onChange={(e) => {
-                  const theme = e.target.value;
+                options={THEMES.map((t) => ({ value: t.id, label: t.label }))}
+                onChange={(theme) => {
                   patch((d) => (d.ui.theme = theme));
                   onPreviewTheme(theme);
                 }}
-              >
-                {THEMES.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
+              />
             </label>
             <label>
               界面缩放（写入 [ui] zoom，1.0 = 100%）
@@ -127,15 +131,14 @@ export default function Settings({
             <h3>会话</h3>
             <label>
               默认模式
-              <select
+              <Dropdown
                 value={draft.session.default_mode}
-                onChange={(e) =>
-                  patch((d) => (d.session.default_mode = e.target.value as Mode))
-                }
-              >
-                <option value="translate">翻译</option>
-                <option value="chat">聊天</option>
-              </select>
+                options={[
+                  { value: "translate", label: "翻译" },
+                  { value: "chat", label: "聊天" },
+                ]}
+                onChange={(v) => patch((d) => (d.session.default_mode = v as Mode))}
+              />
             </label>
             <label>
               上下文窗口（条）
@@ -183,16 +186,14 @@ export default function Settings({
             <div className="profile-row">
               <label>
                 编辑
-                <select
-                  value={profileIdx}
-                  onChange={(e) => setProfileIdx(Number(e.target.value))}
-                >
-                  {draft.profiles.map((p, i) => (
-                    <option key={i} value={i}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+                <Dropdown
+                  value={String(profileIdx)}
+                  options={draft.profiles.map((p, i) => ({
+                    value: String(i),
+                    label: p.name,
+                  }))}
+                  onChange={(v) => setProfileIdx(Number(v))}
+                />
               </label>
               <button
                 onClick={() => {
@@ -251,34 +252,34 @@ export default function Settings({
                   />
                 </label>
                 <label>
+                  Provider 兼容层
+                  <Dropdown
+                    value={profile.provider ?? ""}
+                    options={[
+                      { value: "", label: "自动（按 URL 判断）" },
+                      { value: "deepseek", label: "DeepSeek" },
+                      { value: "openai", label: "OpenAI 标准" },
+                    ]}
+                    onChange={(v) => patchProfile((p) => (p.provider = v || null))}
+                  />
+                </label>
+                <label>
                   翻译模式思考
-                  <select
+                  <Dropdown
                     value={profile.translate_effort ?? ""}
-                    onChange={(e) =>
-                      patchProfile((p) => (p.translate_effort = e.target.value || null))
+                    options={EFFORT_OPTIONS}
+                    onChange={(v) =>
+                      patchProfile((p) => (p.translate_effort = v || null))
                     }
-                  >
-                    <option value="">no thinking</option>
-                    <option value="low">low</option>
-                    <option value="medium">medium</option>
-                    <option value="high">high</option>
-                    <option value="xhigh">xhigh</option>
-                  </select>
+                  />
                 </label>
                 <label>
                   聊天模式思考
-                  <select
+                  <Dropdown
                     value={profile.chat_effort ?? ""}
-                    onChange={(e) =>
-                      patchProfile((p) => (p.chat_effort = e.target.value || null))
-                    }
-                  >
-                    <option value="">no thinking</option>
-                    <option value="low">low</option>
-                    <option value="medium">medium</option>
-                    <option value="high">high</option>
-                    <option value="xhigh">xhigh</option>
-                  </select>
+                    options={EFFORT_OPTIONS}
+                    onChange={(v) => patchProfile((p) => (p.chat_effort = v || null))}
+                  />
                 </label>
                 <label>
                   Temperature（留空不传）
@@ -299,16 +300,11 @@ export default function Settings({
             )}
             <label>
               使用的 profile
-              <select
+              <Dropdown
                 value={draft.active_profile}
-                onChange={(e) => patch((d) => (d.active_profile = e.target.value))}
-              >
-                {draft.profiles.map((p, i) => (
-                  <option key={i} value={p.name}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+                options={draft.profiles.map((p) => ({ value: p.name, label: p.name }))}
+                onChange={(v) => patch((d) => (d.active_profile = v))}
+              />
             </label>
           </section>
 

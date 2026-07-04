@@ -12,6 +12,8 @@ pub enum MarkKind {
     Word,
     /// native 用法
     Usage,
+    /// 收藏的句子（word = 原句，meaning = 译文）
+    Sentence,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -135,7 +137,9 @@ impl MemoryStore {
     }
 
     /// Compact JSON context for the system prompt: the most recently marked
-    /// entries (word/kind/meaning only), plus the profile summary.
+    /// entries (all kinds — word / usage / sentence), plus the profile summary.
+    /// Usage entries keep their explanation in `native_usage`, so fall back to
+    /// it when `meaning` is absent — otherwise the model would see null.
     pub fn prompt_context(mem: &VocabMemory, max_words: usize) -> String {
         let mut entries: Vec<&VocabEntry> = mem.words.iter().collect();
         entries.sort_by(|a, b| b.last_marked.cmp(&a.last_marked));
@@ -146,7 +150,7 @@ impl MemoryStore {
                 serde_json::json!({
                     "word": e.word,
                     "kind": e.kind,
-                    "meaning": e.meaning,
+                    "meaning": e.meaning.as_ref().or(e.native_usage.as_ref()),
                 })
             })
             .collect();
@@ -191,6 +195,27 @@ mod tests {
         s.mark(input("Ubiquitous")).unwrap(); // case-insensitive merge
         assert_eq!(s.load().unwrap().words.len(), 1);
         s.unmark("ubiquitous", MarkKind::Word).unwrap();
+        assert!(s.load().unwrap().words.is_empty());
+    }
+
+    #[test]
+    fn sentence_kind_roundtrips() {
+        let (_d, s) = store();
+        s.mark(MarkInput {
+            word: "The committee has been dragging its feet.".into(),
+            kind: MarkKind::Sentence,
+            ipa: None,
+            pos: None,
+            meaning: Some("委员会一直在拖延。".into()),
+            native_usage: None,
+            context: None,
+        })
+        .unwrap();
+        let mem = s.load().unwrap();
+        assert_eq!(mem.words[0].kind, MarkKind::Sentence);
+        let ctx = MemoryStore::prompt_context(&mem, 10);
+        assert!(ctx.contains("sentence"));
+        s.unmark("The committee has been dragging its feet.", MarkKind::Sentence).unwrap();
         assert!(s.load().unwrap().words.is_empty());
     }
 

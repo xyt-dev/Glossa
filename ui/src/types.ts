@@ -1,6 +1,6 @@
 export type Mode = "translate" | "chat";
 export type Role = "user" | "assistant";
-export type MarkKind = "word" | "usage";
+export type MarkKind = "word" | "usage" | "sentence";
 
 export interface Example {
   en: string;
@@ -13,15 +13,30 @@ export interface WordEntry {
   pos?: string | null;
   meaning?: string | null;
   ielts_band?: number | null;
+  /** legacy (≤v0.2) per-word native note; still rendered for old sessions */
   native_usage?: string | null;
+  examples: Example[];
+}
+
+export interface SentencePair {
+  src: string;
+  dst: string;
+}
+
+/** Native expression found in the source sentence, its own card. */
+export interface UsageEntry {
+  usage: string;
+  explanation?: string | null;
   examples: Example[];
 }
 
 export interface TranslationResult {
   translation: string;
+  sentences: SentencePair[];
   source_lang?: string | null;
   target_lang?: string | null;
   words: WordEntry[];
+  usages: UsageEntry[];
 }
 
 export interface Message {
@@ -86,6 +101,7 @@ export interface Profile {
   model: string;
   translate_effort?: string | null;
   chat_effort?: string | null;
+  provider?: string | null;
   temperature?: number | null;
   extra?: Record<string, unknown> | null;
 }

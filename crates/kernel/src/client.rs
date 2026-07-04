@@ -64,7 +64,11 @@ impl Client {
         }
         // Agent.rs resolves translate_effort/chat_effort into effort before calling us.
         // effort=Some(level) → thinking enabled; effort=None → thinking disabled.
-        let is_deepseek = profile.base_url.contains("deepseek");
+        // Explicit `provider` beats URL sniffing (aggregator URLs can mislead).
+        let is_deepseek = match profile.provider.as_deref() {
+            Some(p) => p.eq_ignore_ascii_case("deepseek"),
+            None => profile.base_url.contains("deepseek"),
+        };
         if is_deepseek {
             body["thinking"] = json!({"type": if profile.effort.is_some() { "enabled" } else { "disabled" }});
         }
@@ -214,5 +218,21 @@ mod tests {
         let body = Client::build_body(&openai_profile(None), &messages(), false, false);
         assert!(body.get("thinking").is_none());
         assert!(body.get("reasoning_effort").is_none());
+    }
+
+    #[test]
+    fn explicit_provider_overrides_url_sniffing() {
+        // deepseek-looking URL, but the user says it's an OpenAI-compatible provider
+        let mut p = deepseek_profile(Some("xhigh"));
+        p.provider = Some("openai".into());
+        let body = Client::build_body(&p, &messages(), false, false);
+        assert!(body.get("thinking").is_none());
+        assert_eq!(body["reasoning_effort"], "high");
+
+        // aggregator URL without "deepseek", explicitly marked as deepseek
+        let mut p = openai_profile(None);
+        p.provider = Some("deepseek".into());
+        let body = Client::build_body(&p, &messages(), false, false);
+        assert_eq!(body["thinking"]["type"], "disabled");
     }
 }

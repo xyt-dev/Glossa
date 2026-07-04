@@ -1,17 +1,32 @@
 use serde::{Deserialize, Serialize};
 
-use crate::Result;
+use crate::{Error, Result};
 
 /// Structured result of a strict-translation turn.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TranslationResult {
+    /// 完整整体译文。
+    #[serde(default)]
     pub translation: String,
+    /// 逐句对照：长段落按句切分，逐句给出译文。
+    #[serde(default)]
+    pub sentences: Vec<SentencePair>,
     #[serde(default)]
     pub source_lang: Option<String>,
     #[serde(default)]
     pub target_lang: Option<String>,
+    /// 值得学习的词汇卡。
     #[serde(default)]
     pub words: Vec<WordEntry>,
+    /// 原句中出现的 native 表达卡（独立于 words）。
+    #[serde(default)]
+    pub usages: Vec<UsageEntry>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SentencePair {
+    pub src: String,
+    pub dst: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -25,8 +40,22 @@ pub struct WordEntry {
     pub meaning: Option<String>,
     #[serde(default)]
     pub ielts_band: Option<f32>,
-    #[serde(default)]
+    /// v0.2 schema had per-word native notes; kept only so old sessions still
+    /// render. No longer part of the prompt schema.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub native_usage: Option<String>,
+    #[serde(default)]
+    pub examples: Vec<Example>,
+}
+
+/// A noteworthy native expression found in the source sentence
+/// (idiom / collocation / sentence pattern), explained as its own card.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UsageEntry {
+    /// The expression, quoted verbatim from the source.
+    pub usage: String,
+    #[serde(default)]
+    pub explanation: Option<String>,
     #[serde(default)]
     pub examples: Vec<Example>,
 }
@@ -40,7 +69,10 @@ pub struct Example {
 /// Schema description embedded in the system prompt (kept human-readable
 /// rather than formal JSON Schema — models follow it better).
 pub const SCHEMA_TEXT: &str = r#"{
-  "translation": "严格对应的译文（string，必填）",
+  "translation": "完整整体译文（string，必填）",
+  "sentences": [
+    { "src": "原文中的一个句子", "dst": "该句的对应译文" }
+  ],
   "source_lang": "原文语言代码，如 en / zh",
   "target_lang": "译文语言代码",
   "words": [
@@ -50,7 +82,13 @@ pub const SCHEMA_TEXT: &str = r#"{
       "pos": "词性缩写，如 adj. / n. / v. / phr.",
       "meaning": "该词在本句语境中的中文释义",
       "ielts_band": 8,
-      "native_usage": "native speaker 的典型用法/搭配/语感说明（中文讲解，可含英文搭配）",
+      "examples": [ { "en": "英文例句", "zh": "例句中文翻译" } ]
+    }
+  ],
+  "usages": [
+    {
+      "usage": "原句中出现的 native 表达（习语/固定搭配/句式，原样摘出）",
+      "explanation": "中文讲解：什么场合用、语感、常见搭配",
       "examples": [ { "en": "英文例句", "zh": "例句中文翻译" } ]
     }
   ]
@@ -67,7 +105,13 @@ fn extract_json(raw: &str) -> &str {
 }
 
 pub fn parse_translation(raw: &str) -> Result<TranslationResult> {
-    Ok(serde_json::from_str(extract_json(raw))?)
+    let r: TranslationResult = serde_json::from_str(extract_json(raw))?;
+    // A result carrying neither a translation nor sentence pairs is useless —
+    // treat it as unparseable so the repair/fallback path kicks in.
+    if r.translation.trim().is_empty() && r.sentences.is_empty() {
+        return Err(Error::EmptyResponse);
+    }
+    Ok(r)
 }
 
 #[cfg(test)]
@@ -77,11 +121,13 @@ mod tests {
     const GOOD: &str = r#"{"translation":"你好","source_lang":"en","target_lang":"zh","words":[{"word":"ubiquitous","ipa":"/juːˈbɪkwɪtəs/","pos":"adj.","meaning":"无处不在的","ielts_band":8,"native_usage":"常与 become 连用","examples":[{"en":"Smartphones are ubiquitous.","zh":"智能手机无处不在。"}]}]}"#;
 
     #[test]
-    fn parses_plain_json() {
+    fn parses_plain_json_including_legacy_native_usage() {
         let r = parse_translation(GOOD).unwrap();
         assert_eq!(r.translation, "你好");
         assert_eq!(r.words.len(), 1);
-        assert_eq!(r.words[0].examples[0].zh, "智能手机无处不在。");
+        assert_eq!(r.words[0].native_usage.as_deref(), Some("常与 become 连用"));
+        assert!(r.sentences.is_empty());
+        assert!(r.usages.is_empty());
     }
 
     #[test]
@@ -92,10 +138,41 @@ mod tests {
     }
 
     #[test]
+    fn parses_sentences_and_usages() {
+        let raw = r#"{
+          "translation": "整体译文。",
+          "sentences": [
+            {"src": "First sentence.", "dst": "第一句。"},
+            {"src": "Second sentence.", "dst": "第二句。"}
+          ],
+          "usages": [
+            {"usage": "as far as ... is concerned", "explanation": "就……而言",
+             "examples": [{"en": "As far as I'm concerned, it works.", "zh": "就我而言，它可行。"}]}
+          ]
+        }"#;
+        let r = parse_translation(raw).unwrap();
+        assert_eq!(r.sentences.len(), 2);
+        assert_eq!(r.sentences[1].dst, "第二句。");
+        assert_eq!(r.usages[0].usage, "as far as ... is concerned");
+        assert_eq!(r.usages[0].examples.len(), 1);
+    }
+
+    #[test]
+    fn sentences_alone_is_valid() {
+        let r = parse_translation(r#"{"sentences":[{"src":"Hi.","dst":"你好。"}]}"#).unwrap();
+        assert_eq!(r.sentences.len(), 1);
+    }
+
+    #[test]
     fn minimal_object_fills_defaults() {
         let r = parse_translation(r#"{"translation":"hi"}"#).unwrap();
         assert!(r.words.is_empty());
         assert!(r.source_lang.is_none());
+    }
+
+    #[test]
+    fn empty_result_is_rejected() {
+        assert!(parse_translation(r#"{"words":[]}"#).is_err());
     }
 
     #[test]

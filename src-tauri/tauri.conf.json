@@ -15,13 +15,14 @@
         "title": "Glossa",
         "width": 1640,
         "height": 1050,
-        "minWidth": 1100,
-        "minHeight": 800,
+        "minWidth": 960,
+        "minHeight": 640,
         "transparent": true,
         "decorations": false,
         "shadow": true
       }
     ],
+    "macOSPrivateApi": true,
     "security": {
       "csp": null
     }

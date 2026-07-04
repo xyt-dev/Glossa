@@ -197,6 +197,7 @@ input[type="number"]::-webkit-outer-spin-button {
 .sidebar {
   display: flex;
   flex-direction: column;
+  font-size: 18px;
   background: var(--bg-panel);
   border-right: 1px solid var(--border);
   padding: 14px 12px;
@@ -293,33 +294,17 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .session-date {
-  font-size: 16px;
+  font-size: 14px;
   color: var(--fg-faint);
   flex-shrink: 0;
 }
 
-.session-delete {
-  color: var(--fg-faint);
-  border-radius: 4px;
-  width: 18px;
-  line-height: 18px;
-  flex-shrink: 0;
-  visibility: hidden;
-}
-
-.session-tab:hover .session-delete {
-  visibility: visible;
-}
-
-.session-delete:hover {
-  color: var(--danger);
-  background: var(--bg-hover);
-}
+/* 会话的删除/重命名入口在右键菜单，tab 上不再放操作按钮 */
 
 .rename-input {
   width: 100%;
   padding: 2px 6px;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .sidebar-foot {
@@ -336,6 +321,177 @@ input[type="number"]::-webkit-outer-spin-button {
   padding: 8px 10px;
   border-radius: 8px;
   color: var(--fg-muted);
+}
+
+.btn-icon {
+  display: inline-block;
+  width: 1.6em;
+  text-align: left;
+}
+
+/* ---- 自绘下拉与右键菜单 ------------------------------------------------ */
+.dropdown {
+  position: relative;
+}
+
+.dropdown-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  background-color: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  color: var(--fg);
+  transition: border-color 0.12s;
+}
+
+.dropdown-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.dropdown-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.dropdown-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown-chevron {
+  flex-shrink: 0;
+  color: var(--fg-muted);
+  font-size: 14px;
+}
+
+.dropdown-menu {
+  position: fixed;
+  z-index: 120;
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 5px;
+  box-shadow: 0 10px 30px var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dropdown-item {
+  text-align: left;
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dropdown-item:hover {
+  background: var(--bg-hover);
+}
+
+.dropdown-item.selected {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 120;
+  min-width: 150px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 5px;
+  box-shadow: 0 10px 30px var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.context-menu button {
+  text-align: left;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 17px;
+  color: var(--fg);
+}
+
+.context-menu button:hover {
+  background: var(--bg-hover);
+}
+
+.context-menu button.danger:hover {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+}
+
+/* ---- 确认弹窗 ---------------------------------------------------------- */
+.confirm-backdrop {
+  z-index: 130;
+}
+
+.confirm-dialog {
+  width: min(460px, 90vw);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px 24px;
+  box-shadow: 0 12px 40px var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.confirm-title {
+  font-size: 19px;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.confirm-detail {
+  color: var(--fg-muted);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.confirm-actions button {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 20px;
+  color: var(--fg-muted);
+}
+
+.confirm-actions button:hover {
+  color: var(--fg);
+  background: var(--bg-hover);
+}
+
+.confirm-actions button.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+.confirm-actions button.danger:hover {
+  color: var(--bg);
+  background: color-mix(in srgb, var(--danger) 85%, var(--fg));
 }
 
 .settings-btn:hover {
@@ -418,6 +574,41 @@ input[type="number"]::-webkit-outer-spin-button {
   word-break: break-word;
 }
 
+/* 逐句对照卡片 */
+.sentence-card {
+  border-left-color: var(--accent);
+}
+
+.sent-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.sent-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.sent-src {
+  font-size: 20px;
+  color: var(--fg);
+  line-height: 1.7;
+  word-break: break-word;
+}
+
+.sent-dst {
+  margin-top: 4px;
+  font-size: 19px;
+  color: var(--fg-muted);
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.sent-row .mark-btn {
+  flex-shrink: 0;
+}
+
 .word-cards {
   margin-top: 12px;
   display: flex;
@@ -428,9 +619,32 @@ input[type="number"]::-webkit-outer-spin-button {
 .word-card {
   background: var(--bg);
   border: 1px solid var(--border);
+  border-left: 3px solid var(--ipa);
   border-radius: 12px;
   padding: 12px 14px;
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--fg) 5%, transparent);
+}
+
+/* 卡片类型徽标：词=青，Native 用法=绿，句=主题色 */
+.kind-tag {
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 0 5px;
+  margin-right: 4px;
+}
+
+.word-tag {
+  color: var(--ipa);
+  border: 1px solid var(--ipa);
+  background: color-mix(in srgb, var(--ipa) 12%, transparent);
+}
+
+.sent-tag {
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  margin-right: 8px;
 }
 
 .word-head {
@@ -503,7 +717,7 @@ input[type="number"]::-webkit-outer-spin-button {
   line-height: 1.6;
 }
 
-.native-usage .label {
+.native-tag {
   font-size: 15px;
   font-weight: 700;
   color: var(--ok);
@@ -512,6 +726,23 @@ input[type="number"]::-webkit-outer-spin-button {
   padding: 0 4px;
   margin-right: 6px;
   background: color-mix(in srgb, var(--ok) 12%, transparent);
+}
+
+/* native 表达卡 */
+.usage-card {
+  border-left-color: var(--ok);
+}
+
+.usage-phrase {
+  font-size: 19px;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.usage-explanation {
+  margin-top: 6px;
+  color: var(--fg);
+  line-height: 1.7;
 }
 
 .examples {
@@ -674,7 +905,8 @@ input[type="number"]::-webkit-outer-spin-button {
 /* ---- 输入栏 ---------------------------------------------------------- */
 .input-bar {
   display: flex;
-  align-items: flex-end;
+  /* stretch keeps the toggle/send button exactly as tall as the textarea */
+  align-items: stretch;
   gap: 12px;
   padding: 14px 30px 18px;
   border-top: 1px solid var(--border);
@@ -683,14 +915,17 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .mode-toggle {
   display: flex;
+  align-items: stretch;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
   flex-shrink: 0;
 }
 
 .mode-toggle button {
-  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
   font-size: 18px;
   color: var(--fg-faint);
   transition: all 0.12s;
@@ -706,16 +941,19 @@ input[type="number"]::-webkit-outer-spin-button {
   flex: 1;
   resize: none;
   line-height: 1.6;
-  padding: 9px 12px;
+  padding: 9px 14px;
+  border-radius: 10px;
   background: var(--bg);
 }
 
 .send-btn {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
   background: var(--accent);
   color: var(--accent-fg);
-  border-radius: 8px;
-  padding: 9px 18px;
+  border-radius: 10px;
+  padding: 0 22px;
   font-weight: 600;
   transition:
     background-color 0.12s,
@@ -827,8 +1065,10 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .modal-body label > input,
-.modal-body label > select {
+.modal-body label > select,
+.modal-body label > .dropdown {
   width: 260px;
+  flex-shrink: 0;
 }
 
 .profile-row {
@@ -916,13 +1156,9 @@ input[type="number"]::-webkit-outer-spin-button {
   min-width: 0;
 }
 
-.vocab-toolbar select {
-  width: 132px;
-}
-
-.vocab-toolbar select:disabled {
-  opacity: 0.65;
-  cursor: default;
+.vocab-sort {
+  width: 148px;
+  flex-shrink: 0;
 }
 
 .vocab-search-note {
@@ -998,6 +1234,26 @@ input[type="number"]::-webkit-outer-spin-button {
   border-color: var(--ok);
   color: var(--ok);
   background: color-mix(in srgb, var(--ok) 12%, transparent);
+}
+
+.vocab-kind.sentence {
+  border-color: var(--ipa);
+  color: var(--ipa);
+  background: color-mix(in srgb, var(--ipa) 12%, transparent);
+}
+
+.vocab-remove {
+  color: var(--fg-faint);
+  border-radius: 4px;
+  width: 24px;
+  line-height: 24px;
+  text-align: center;
+  font-size: 18px;
+}
+
+.vocab-remove:hover {
+  color: var(--danger);
+  background: var(--bg-hover);
 }
 
 .vocab-meaning,

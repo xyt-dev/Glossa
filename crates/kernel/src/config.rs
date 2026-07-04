@@ -35,6 +35,7 @@ model = "deepseek-v4-pro-max"
 # 思考强度（留空/删除 = no thinking）：low | medium | high | xhigh
 # translate_effort = "high"           # 翻译模式（默认 no thinking）
 chat_effort = "xhigh"                 # 聊天模式
+# provider = "deepseek"               # 可选：thinking 字段兼容层（deepseek | openai），缺省按 base_url 自动判断
 # temperature = 1.0                # 可选
 # [profiles.extra]                 # 可选，任意额外请求字段原样透传
 # top_p = 0.95
@@ -129,6 +130,10 @@ pub struct Profile {
     pub translate_effort: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub chat_effort: Option<String>,
+    /// Provider compat layer override ("deepseek" | "openai"). When absent the
+    /// client sniffs the base_url; set it explicitly for aggregator URLs.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -172,8 +177,30 @@ pub fn default_config_path() -> PathBuf {
     config_dir().join("config.toml")
 }
 
+/// v0.1 profiles had a single `effort` field applied to every turn. Since the
+/// per-mode split it would be silently dropped (it now only exists as a
+/// #[serde(skip)] runtime field), losing the user's setting — map it to
+/// `chat_effort` instead.
+fn migrate_legacy(doc: &mut toml::Value) -> bool {
+    let mut changed = false;
+    if let Some(profiles) = doc.get_mut("profiles").and_then(toml::Value::as_array_mut) {
+        for profile in profiles {
+            if let Some(table) = profile.as_table_mut() {
+                if let Some(effort) = table.remove("effort") {
+                    changed = true;
+                    if !table.contains_key("chat_effort") {
+                        table.insert("chat_effort".into(), effort);
+                    }
+                }
+            }
+        }
+    }
+    changed
+}
+
 impl Config {
     /// Load from `path`, writing the commented default template first if absent.
+    /// Legacy fields are migrated and, if any were found, written back.
     pub fn load_or_init(path: &Path) -> Result<Config> {
         if !path.exists() {
             if let Some(parent) = path.parent() {
@@ -181,7 +208,13 @@ impl Config {
             }
             fs::write(path, DEFAULT_CONFIG_TOML)?;
         }
-        Ok(toml::from_str(&fs::read_to_string(path)?)?)
+        let mut doc: toml::Value = toml::from_str(&fs::read_to_string(path)?)?;
+        let migrated = migrate_legacy(&mut doc);
+        let cfg: Config = doc.try_into()?;
+        if migrated {
+            cfg.save(path)?;
+        }
+        Ok(cfg)
     }
 
     /// Serialize back to `path`. Comments from the template are not preserved.
@@ -241,6 +274,38 @@ mod tests {
         cfg2.save(&path).unwrap();
         let cfg3 = Config::load_or_init(&path).unwrap();
         assert_eq!(cfg3.ui.theme, "gruvbox-dark");
+    }
+
+    #[test]
+    fn legacy_effort_migrates_to_chat_effort() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        std::fs::write(
+            &path,
+            r#"active_profile = "old"
+[[profiles]]
+name = "old"
+base_url = "https://api.deepseek.com/v1"
+model = "m"
+effort = "high"
+"#,
+        )
+        .unwrap();
+        let cfg = Config::load_or_init(&path).unwrap();
+        assert_eq!(cfg.profiles[0].chat_effort.as_deref(), Some("high"));
+        assert!(cfg.profiles[0].translate_effort.is_none());
+        // migrated config was written back without the legacy key
+        let raw = std::fs::read_to_string(&path).unwrap();
+        assert!(raw.contains("chat_effort"));
+        assert!(!raw.contains("\neffort"));
+        // an explicit chat_effort must not be overwritten by a leftover effort
+        std::fs::write(
+            &path,
+            "[[profiles]]\nname = \"x\"\neffort = \"low\"\nchat_effort = \"xhigh\"\n",
+        )
+        .unwrap();
+        let cfg2 = Config::load_or_init(&path).unwrap();
+        assert_eq!(cfg2.profiles[0].chat_effort.as_deref(), Some("xhigh"));
     }
 
     #[test]

@@ -14,6 +14,13 @@ import Conversation from "./components/Conversation";
 import InputBar from "./components/InputBar";
 import Settings from "./components/Settings";
 import VocabBook from "./components/VocabBook";
+import ConfirmDialog from "./components/ConfirmDialog";
+
+interface ConfirmReq {
+  title: string;
+  detail?: string;
+  action: () => void | Promise<void>;
+}
 
 function applyTheme(theme: string) {
   document.documentElement.dataset.theme = theme;
@@ -33,6 +40,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showVocab, setShowVocab] = useState(false);
+  const [confirm, setConfirm] = useState<ConfirmReq | null>(null);
   const didInit = useRef(false);
 
   useEffect(() => {
@@ -59,6 +67,19 @@ export default function App() {
         setError(String(e));
       }
     })();
+  }, []);
+
+  // Suppress the webview's native context menu (mismatched with the theme);
+  // inputs keep it for paste. Components with custom menus preventDefault
+  // earlier in the bubble phase anyway.
+  useEffect(() => {
+    const onCtx = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("input, textarea")) return;
+      e.preventDefault();
+    };
+    window.addEventListener("contextmenu", onCtx);
+    return () => window.removeEventListener("contextmenu", onCtx);
   }, []);
 
   // Ctrl+M toggles input mode anywhere
@@ -101,20 +122,28 @@ export default function App() {
     }
   }, [busy, refreshSessions]);
 
-  const removeSession = useCallback(
+  const doRemoveSession = useCallback(
     async (id: string) => {
-      try {
-        await api.deleteSession(id);
-        const list = await api.listSessions();
-        setSessions(list);
-        if (active?.id === id) {
-          setActive(list.length ? await api.loadSession(list[0].id) : null);
-        }
-      } catch (e) {
-        setError(String(e));
+      await api.deleteSession(id);
+      const list = await api.listSessions();
+      setSessions(list);
+      if (active?.id === id) {
+        setActive(list.length ? await api.loadSession(list[0].id) : null);
       }
     },
     [active],
+  );
+
+  const removeSession = useCallback(
+    (id: string) => {
+      const meta = sessions.find((s) => s.id === id);
+      setConfirm({
+        title: `删除会话「${meta?.title ?? "未命名"}」？`,
+        detail: "会话内容将被永久删除，无法恢复。",
+        action: () => doRemoveSession(id),
+      });
+    },
+    [sessions, doRemoveSession],
   );
 
   const renameSession = useCallback(
@@ -270,7 +299,38 @@ export default function App() {
           onPreviewZoom={(z) => api.setZoom(z).catch(() => {})}
         />
       )}
-      {showVocab && <VocabBook memory={memory} onClose={() => setShowVocab(false)} />}
+      {showVocab && (
+        <VocabBook
+          memory={memory}
+          onClose={() => setShowVocab(false)}
+          onRemove={(word, kind) => {
+            const kindLabel = kind === "word" ? "生词" : kind === "usage" ? "用法" : "句子";
+            setConfirm({
+              title: `从生词本删除${kindLabel}「${word}」？`,
+              detail: "删除后无法恢复，模型的水平画像上下文中也会移除这条记录。",
+              action: async () => {
+                await api.unmarkWord(word, kind);
+                setMemory(await api.getMemory());
+              },
+            });
+          }}
+        />
+      )}
+      {confirm && (
+        <ConfirmDialog
+          title={confirm.title}
+          detail={confirm.detail}
+          onCancel={() => setConfirm(null)}
+          onConfirm={async () => {
+            try {
+              await confirm.action();
+            } catch (e) {
+              setError(String(e));
+            }
+            setConfirm(null);
+          }}
+        />
+      )}
     </div>
   );
 }
