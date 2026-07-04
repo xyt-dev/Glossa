@@ -69,7 +69,6 @@ export interface VocabEntry {
   meaning?: string | null;
   native_usage?: string | null;
   contexts: string[];
-  marked_count: number;
   first_marked: string;
   last_marked: string;
 }
@@ -85,7 +84,8 @@ export interface Profile {
   api_key: string;
   api_key_env: string;
   model: string;
-  effort?: string | null;
+  translate_effort?: string | null;
+  chat_effort?: string | null;
   temperature?: number | null;
   extra?: Record<string, unknown> | null;
 }

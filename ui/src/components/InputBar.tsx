@@ -28,7 +28,7 @@ export default function InputBar({ mode, busy, disabled, onModeChange, onSend }:
           className={mode === "translate" ? "on" : ""}
           onClick={() => onModeChange("translate")}
         >
-          严格翻译
+          翻译
         </button>
         <button
           className={mode === "chat" ? "on" : ""}

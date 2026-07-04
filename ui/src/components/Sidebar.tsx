@@ -10,6 +10,7 @@ interface Props {
   onDelete: (id: string) => void;
   onRename: (id: string, title: string) => void;
   onSettings: () => void;
+  onVocab: () => void;
 }
 
 function shortDate(iso: string): string {
@@ -31,6 +32,7 @@ export default function Sidebar({
   onDelete,
   onRename,
   onSettings,
+  onVocab,
 }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -95,6 +97,9 @@ export default function Sidebar({
         ))}
       </nav>
       <div className="sidebar-foot">
+        <button className="settings-btn" onClick={onVocab}>
+          📚 生词本
+        </button>
         <button className="settings-btn" onClick={onSettings}>
           ⚙ 设置
         </button>

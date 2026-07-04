@@ -36,7 +36,6 @@ pub struct VocabEntry {
     pub native_usage: Option<String>,
     #[serde(default)]
     pub contexts: Vec<String>,
-    pub marked_count: u32,
     pub first_marked: String,
     pub last_marked: String,
 }
@@ -86,7 +85,7 @@ impl MemoryStore {
         Ok(())
     }
 
-    /// Mark a word/usage: bumps count on repeat marks, inserts otherwise.
+    /// Mark a word/usage: inserts once, then idempotently refreshes metadata.
     pub fn mark(&self, input: MarkInput) -> Result<VocabEntry> {
         let mut mem = self.load()?;
         let today = chrono::Utc::now().to_rfc3339();
@@ -96,7 +95,6 @@ impl MemoryStore {
             .find(|e| e.kind == input.kind && e.word.eq_ignore_ascii_case(&input.word));
         let entry = match existing {
             Some(e) => {
-                e.marked_count += 1;
                 e.last_marked = today;
                 if let Some(ctx) = input.context {
                     if !e.contexts.contains(&ctx) {
@@ -118,7 +116,6 @@ impl MemoryStore {
                     meaning: input.meaning,
                     native_usage: input.native_usage,
                     contexts: input.context.into_iter().collect(),
-                    marked_count: 1,
                     first_marked: today.clone(),
                     last_marked: today,
                 };
@@ -138,7 +135,7 @@ impl MemoryStore {
     }
 
     /// Compact JSON context for the system prompt: the most recently marked
-    /// `max_words` entries (word/kind/count/meaning only), plus the profile summary.
+    /// entries (word/kind/meaning only), plus the profile summary.
     pub fn prompt_context(mem: &VocabMemory, max_words: usize) -> String {
         let mut entries: Vec<&VocabEntry> = mem.words.iter().collect();
         entries.sort_by(|a, b| b.last_marked.cmp(&a.last_marked));
@@ -149,7 +146,6 @@ impl MemoryStore {
                 serde_json::json!({
                     "word": e.word,
                     "kind": e.kind,
-                    "count": e.marked_count,
                     "meaning": e.meaning,
                 })
             })
@@ -159,7 +155,7 @@ impl MemoryStore {
             out.push_str(&format!("水平画像：{}\n", mem.profile_summary.trim()));
         }
         if !list.is_empty() {
-            out.push_str("标记记录（count 越大越说明掌握薄弱）：\n");
+            out.push_str("最近标记记录：\n");
             out.push_str(&serde_json::to_string(&list).unwrap_or_default());
         }
         out
@@ -189,12 +185,10 @@ mod tests {
     }
 
     #[test]
-    fn mark_inserts_then_increments() {
+    fn mark_is_idempotent_for_existing_word() {
         let (_d, s) = store();
-        let e1 = s.mark(input("ubiquitous")).unwrap();
-        assert_eq!(e1.marked_count, 1);
-        let e2 = s.mark(input("Ubiquitous")).unwrap(); // case-insensitive merge
-        assert_eq!(e2.marked_count, 2);
+        s.mark(input("ubiquitous")).unwrap();
+        s.mark(input("Ubiquitous")).unwrap(); // case-insensitive merge
         assert_eq!(s.load().unwrap().words.len(), 1);
         s.unmark("ubiquitous", MarkKind::Word).unwrap();
         assert!(s.load().unwrap().words.is_empty());

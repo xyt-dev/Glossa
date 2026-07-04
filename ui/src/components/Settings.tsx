@@ -16,7 +16,8 @@ const emptyProfile = (): Profile => ({
   api_key: "",
   api_key_env: "OPENAI_API_KEY",
   model: "",
-  effort: null,
+  translate_effort: null,
+  chat_effort: null,
   temperature: null,
   extra: null,
 });
@@ -132,7 +133,7 @@ export default function Settings({
                   patch((d) => (d.session.default_mode = e.target.value as Mode))
                 }
               >
-                <option value="translate">严格翻译</option>
+                <option value="translate">翻译</option>
                 <option value="chat">聊天</option>
               </select>
             </label>
@@ -250,14 +251,34 @@ export default function Settings({
                   />
                 </label>
                 <label>
-                  Effort（reasoning_effort，留空不传）
-                  <input
-                    value={profile.effort ?? ""}
-                    placeholder="low / medium / high"
+                  翻译模式思考
+                  <select
+                    value={profile.translate_effort ?? ""}
                     onChange={(e) =>
-                      patchProfile((p) => (p.effort = e.target.value.trim() || null))
+                      patchProfile((p) => (p.translate_effort = e.target.value || null))
                     }
-                  />
+                  >
+                    <option value="">no thinking</option>
+                    <option value="low">low</option>
+                    <option value="medium">medium</option>
+                    <option value="high">high</option>
+                    <option value="xhigh">xhigh</option>
+                  </select>
+                </label>
+                <label>
+                  聊天模式思考
+                  <select
+                    value={profile.chat_effort ?? ""}
+                    onChange={(e) =>
+                      patchProfile((p) => (p.chat_effort = e.target.value || null))
+                    }
+                  >
+                    <option value="">no thinking</option>
+                    <option value="low">low</option>
+                    <option value="medium">medium</option>
+                    <option value="high">high</option>
+                    <option value="xhigh">xhigh</option>
+                  </select>
                 </label>
                 <label>
                   Temperature（留空不传）

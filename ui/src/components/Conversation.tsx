@@ -66,7 +66,7 @@ export default function Conversation({
     <div className="conversation">
       {session.messages.length === 0 && !busy && (
         <div className="empty-hint">
-          <div className="hint-title">严格翻译 + 词汇讲解</div>
+          <div className="hint-title">翻译 + 词汇讲解</div>
           <div className="hint-body">
             输入中文或英文回车翻译；切到聊天模式（Ctrl+M）可就翻译内容继续追问。
             词卡上可标记生词 / native 用法，模型会据此校准讲解深度。

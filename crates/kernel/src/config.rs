@@ -14,7 +14,7 @@ active_profile = "deepseek"
 [ui]
 # gruvbox-dark | gruvbox-light | catppuccin-mocha | catppuccin-latte
 theme = "catppuccin-mocha"
-zoom = 1.2   # 界面缩放（1.0 = 100%，建议 0.8-1.8）
+zoom = 1.0                            # 界面缩放（1.0 = 100%，建议 0.8-1.8）
 
 [memory]
 # 生词本路径，缺省为平台数据目录下 vocab.json
@@ -32,7 +32,9 @@ base_url = "https://api.deepseek.com/v1"
 api_key = ""                       # 直接填 key，或留空用下面的环境变量
 api_key_env = "DEEPSEEK_API_KEY"
 model = "deepseek-v4-pro-max"
-effort = "high"                    # 可选，作为 reasoning_effort 传给 API
+# 思考强度（留空/删除 = no thinking）：low | medium | high | xhigh
+# translate_effort = "high"           # 翻译模式（默认 no thinking）
+chat_effort = "xhigh"                 # 聊天模式
 # temperature = 1.0                # 可选
 # [profiles.extra]                 # 可选，任意额外请求字段原样透传
 # top_p = 0.95
@@ -64,9 +66,9 @@ impl Default for Config {
                 api_key: String::new(),
                 api_key_env: "DEEPSEEK_API_KEY".into(),
                 model: "deepseek-v4-pro-max".into(),
-                effort: Some("high".into()),
-                temperature: None,
-                extra: None,
+                translate_effort: None,
+                chat_effort: Some("xhigh".into()),
+                ..Default::default()
             }],
         }
     }
@@ -82,7 +84,7 @@ pub struct UiConfig {
 
 impl Default for UiConfig {
     fn default() -> Self {
-        Self { theme: "catppuccin-mocha".into(), zoom: 1.2 }
+        Self { theme: "catppuccin-mocha".into(), zoom: 1.0 }
     }
 }
 
@@ -122,13 +124,18 @@ pub struct Profile {
     pub api_key: String,
     pub api_key_env: String,
     pub model: String,
+    /// Per-mode reasoning effort: null → 不思考, "low"|"medium"|"high"|"xhigh" → enabled.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub effort: Option<String>,
+    pub translate_effort: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub chat_effort: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f64>,
-    /// Extra request-body fields passed through verbatim.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub extra: Option<serde_json::Map<String, serde_json::Value>>,
+    /// Populated by agent.rs from translate_effort/chat_effort before calling the client.
+    #[serde(skip)]
+    pub effort: Option<String>,
 }
 
 impl Profile {
@@ -215,10 +222,11 @@ mod tests {
         assert_eq!(cfg.profiles.len(), 1);
         let p = cfg.active_profile().unwrap();
         assert_eq!(p.model, "deepseek-v4-pro-max");
-        assert_eq!(p.effort.as_deref(), Some("high"));
+        assert_eq!(p.chat_effort.as_deref(), Some("xhigh"));
+        assert!(p.translate_effort.is_none(), "translate should default to no thinking");
         assert_eq!(cfg.session.default_mode, Mode::Translate);
         assert_eq!(cfg.ui.theme, "catppuccin-mocha");
-        assert_eq!(cfg.ui.zoom, 1.2);
+        assert_eq!(cfg.ui.zoom, 1.0);
     }
 
     #[test]

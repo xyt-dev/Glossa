@@ -66,7 +66,12 @@ pub async fn send(
     mode: Mode,
 ) -> Result<ReceiverStream<SendEvent>> {
     let mut session = store.load(&session_id)?;
-    let profile = config.active_profile()?.clone();
+    let mut profile = config.active_profile()?.clone();
+    // Collapse per-mode effort into a single request field for client.rs.
+    profile.effort = match mode {
+        Mode::Translate => profile.translate_effort.take(),
+        Mode::Chat => profile.chat_effort.take(),
+    };
     let mem = memory.load()?;
     let mem_ctx = MemoryStore::prompt_context(&mem, config.memory.max_context_words);
 

@@ -1,0 +1,144 @@
+# Change Log
+
+## v0.2.0 - 2026-07-03
+
+### 修复：安装版启动白屏
+
+- 修复通过 `cargo install --path src-tauri` 安装后的 Glossa 启动白屏问题。
+- 根因：安装版没有启用 Tauri `custom-protocol` 时，会按 dev-url 模式尝试加载 `http://localhost:1420`，没有 Vite dev server 时窗口为空白。
+- 处理：
+  - `src-tauri/Cargo.toml` 新增默认 feature：
+    - `default = ["custom-protocol"]`
+    - `custom-protocol = ["tauri/custom-protocol"]`
+  - `ui/vite.config.ts` 新增 `base: "./"`，让打包后的前端资源使用相对路径，适配 Tauri custom protocol。
+  - `src-tauri/build.rs` 监听 `../ui/dist/index.html` 与 `../ui/dist/assets`，避免 Cargo 复用旧的嵌入式前端资源。
+  - `README.md` 更新系统命令安装方式，明确使用 `src-tauri` 作为安装路径，并说明前端需要先构建。
+- 验证：
+  - `npm --prefix ui run build`
+  - `cargo install --path src-tauri --locked --features custom-protocol --force --root /tmp/glossa-install-test`
+  - 启动 `/tmp/glossa-install-test/bin/glossa`，确认安装版 UI 正常显示，不再白屏。
+  - `cargo check -p glossa`
+  - `cargo check -p glossa --no-default-features`
+
+### 优化：主题、窗口与安装文档
+
+- 完善 Gruvbox Dark / Gruvbox Light 主题映射，使其更贴近官方 Gruvbox 暖暗背景、纸感前景与 yellow/orange accent。
+- 完善 Catppuccin Mocha / Latte 的 base、mantle、surface、border、accent 层级。
+- 调整默认窗口尺寸：`1360 × 900`，最小尺寸 `900 × 620`。
+- 扩大侧边栏、翻译块、聊天块与设置弹窗的默认展示空间。
+- 配置模板和设置界面明确展示 `[ui] zoom`。
+- `README.md` 新增 Linux 下通过 Cargo 安装为 `glossa` 系统命令的步骤。
+- 验证：
+  - `npm --prefix ui run build`
+  - `cargo test -p kernel`
+  - `cargo check -p glossa`
+
+### 新增：生词本面板
+
+- 左侧侧边栏新增 `📚 生词本` 按钮。
+- 新增 `ui/src/components/VocabBook.tsx`，直接复用前端已有的 `memory.words` 数据。
+- 生词本默认按后端 `Vec<VocabEntry>` 的原始顺序展示，即添加顺序。
+- 支持切换为字母顺序排序。
+- 支持模糊搜索，搜索范围包括：
+  - 单词 `word`
+  - 释义 `meaning`
+  - native 用法 `native_usage`
+  - 上下文 `contexts`
+  - 音标 `ipa`
+  - 词性 `pos`
+- 搜索结果按匹配度排序，并使用原始添加顺序作为稳定 tie-break。
+- 生词本列表支持弹窗内滚动，避免条目过多时撑出窗口。
+- 验证：
+  - `npm --prefix ui run build`
+
+### 修正：生词标记语义统一为状态
+
+- 明确当前产品语义：生词标记是布尔状态，而不是次数累计。
+- 删除后端 `VocabEntry.marked_count` 字段。
+- 修改 `MemoryStore::mark`：
+  - 未存在时插入记录。
+  - 已存在时按 `kind + word` 大小写不敏感合并，并刷新 metadata/context，不再累计次数。
+- 修改 prompt context：
+  - 删除 `count` 字段。
+  - 文案从 `标记记录（count 越大越说明掌握薄弱）` 改为 `最近标记记录`。
+- 更新前端 `VocabEntry` 类型，移除 `marked_count`。
+- 生词本 UI 不再显示 `×1`、`1 次` 或 `添加` 字样。
+- 生词本日期显示改为简短格式，例如 `7/3`。
+- 验证：
+  - `cargo test -p kernel`
+  - `npm --prefix ui run build`
+  - `cargo check -p glossa`
+
+
+### 新增：翻译/聊天分别配置思考模式
+
+- 将思考模式拆为翻译和聊天两个独立设置，不再共用。
+- 每个模式一个下拉，同时包含 `no thinking` 与 effort 等级：
+  - `no thinking`（不启动思考链）
+  - `low` / `medium` / `high` / `xhigh`
+- 数据结构：
+  - Profile 新增 `translate_effort` / `chat_effort`（持久化字段），删除原有的 `effort` / `thinking` 字段。
+  - 新增瞬态字段 `effort`（`#[serde(skip)]`），由 `agent.rs` 根据当前 mode 从对应字段取值后传入 `client.rs`。
+- `client.rs` 映射（含 provider 兼容层）：
+  - `base_url` 含 `deepseek` → 发送 `thinking` 字段，`effort=None` 时 `disabled`，`Some` 时 `enabled`
+  - `base_url` 不含 `deepseek` → 不发送 `thinking` 字段，仅标准 `reasoning_effort`；`xhigh` 自动 normalise 为 `high`
+- 新增 5 个 kernel 测试：
+  - `no_effort_sends_thinking_disabled_without_reasoning`
+  - `effort_low_sends_thinking_enabled_and_reasoning`
+  - `effort_xhigh_sends_thinking_enabled_and_reasoning`
+  - `openai_no_thinking_field_and_xhigh_normalised`
+  - `openai_no_effort_sends_nothing`
+- 验证：
+  - `cargo test -p kernel` — 22 passed（含 5 个新增）
+  - `npm --prefix ui run build`
+  - `cargo check -p glossa`
+
+
+### 调整：provider 兼容层
+
+- `client.rs` 新增 `base_url` 自动检测：含 `deepseek` 才发送 `thinking` 字段，非 DeepSeek provider 只发标准 `reasoning_effort`。
+- 非 DeepSeek 时 `xhigh` 自动 normalise 为 `high`（OpenAI 不接受 xhigh）。
+- 新增 2 个 OpenAI 路径测试。
+
+### 调整：UI 标签与默认思考设置
+
+- UI 中"严格翻译"统一改为"翻译"（InputBar / Conversation / Settings）。
+- 系统 prompt 中"严格翻译模式"保持不变（模型输出约束）。
+- 默认思考设置：翻译模式 no thinking，聊天模式 xhigh。
+- 配置文件模板中 `translate_effort` 默认注释掉，`chat_effort` 默认 `"xhigh"`。
+- 新增断言 `translate_effort.is_none()` 防止回归。
+
+
+
+### 新增：硬编码 CodeNewRoman Nerd Font
+
+- 从 Nerd Fonts v3.4.0 引入 CodeNewRoman Nerd Font，SIL OFL 1.1 许可证。
+- 转换为 WOFF2，bundled 进 ui/src/assets/（Regular / Bold / Italic，共约 6MB）。
+- body 字体栈第一优先级设为 `"CodeNewRoman"`，回退系统字体。
+
+### 调整：基准字号与默认窗口尺寸
+
+- body 基础字号 14px → 20px，`.word` 20px，其余元素等比放大（translation 21px，hint-title 24px 等）。
+- zoom 默认值重置为 1.0（基准字号已足够大，不再依赖默认缩放）。
+- 默认窗口 1360×900 → 1640×1050，最小 900×620 → 1100×800。
+- 侧边栏 232px → 272px → 320px → 420px → 400px。
+- 窗口圆角从“内容区圆角”改为“窗口表面圆角”：
+  - Tauri 窗口配置新增 `"transparent": true`、`"decorations": false`、`"shadow": true`。
+  - `transparent` 让 WebView 背后的原生窗口背景可透出，不再由系统默认方形背景填满四角。
+  - `"decorations": false` 去掉系统标题栏/边框，避免系统装饰层仍然保持方形外框。
+  - 前端将 `html` / `body` / `#root` 背景设为 `transparent`，防止 WebView 根背景重新把透明窗口四角涂成方形。
+  - `.app` 成为真正的窗口视觉表面：`background: var(--bg)` + `border-radius: 14px` + `overflow: hidden`。
+  - 自定义标题栏接管原生标题栏职责，包含拖拽区域和最小化/最大化/关闭按钮。
+  - Tauri v2 capability 明确开放 `core:window:allow-minimize`、`core:window:allow-toggle-maximize`、`core:window:allow-close`、`core:window:allow-start-dragging`，修复 Linux 下自定义窗口按钮/拖拽被权限系统拦截的问题。
+  - 权限配置在 Tauri 启动时加载，测试右上角按钮时需要完全退出并重启应用；仅靠前端热更新可能仍然使用旧 capability。
+  - `.modal-backdrop` 从 `position: fixed` 改为 `position: absolute`，并依赖 `.app { position: relative; overflow: hidden; }`，确保设置弹窗/生词本遮罩也被外层 14px 圆角裁切。
+  - 注意：Linux/Windows/macOS 的最终圆角显示仍取决于窗口管理器/合成器对透明无边框窗口的支持；构建验证只能证明配置和前端代码有效，视觉效果需要实际启动确认。
+
+## TODO
+
+- 生词是怎样作为上下文发送的？发送内容多吗？
+- 严格翻译是否不应该携带聊天上下文？不要让上下文干扰需要翻译的内容？还是提示词注明不要翻译上下文？因为上下文有助于下一轮翻译？但上下文太多影响翻译速度？
+
+
+
+

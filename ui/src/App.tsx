@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { api } from "./api";
 import type {
   Config,
@@ -12,10 +13,13 @@ import Sidebar from "./components/Sidebar";
 import Conversation from "./components/Conversation";
 import InputBar from "./components/InputBar";
 import Settings from "./components/Settings";
+import VocabBook from "./components/VocabBook";
 
 function applyTheme(theme: string) {
   document.documentElement.dataset.theme = theme;
 }
+
+const appWindow = getCurrentWindow();
 
 export default function App() {
   const [config, setConfig] = useState<Config | null>(null);
@@ -28,6 +32,7 @@ export default function App() {
   const [streamMode, setStreamMode] = useState<Mode>("translate");
   const [error, setError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showVocab, setShowVocab] = useState(false);
   const didInit = useRef(false);
 
   useEffect(() => {
@@ -189,6 +194,39 @@ export default function App() {
 
   return (
     <div className="app">
+      <header className="titlebar">
+        <div className="titlebar-drag" data-tauri-drag-region="">
+          <span className="titlebar-title" data-tauri-drag-region="">
+            Glossa
+          </span>
+        </div>
+        <div className="window-controls">
+          <button
+            className="window-control"
+            type="button"
+            aria-label="最小化"
+            onClick={() => void appWindow.minimize()}
+          >
+            −
+          </button>
+          <button
+            className="window-control"
+            type="button"
+            aria-label="最大化/还原"
+            onClick={() => void appWindow.toggleMaximize()}
+          >
+            □
+          </button>
+          <button
+            className="window-control close"
+            type="button"
+            aria-label="关闭"
+            onClick={() => void appWindow.close()}
+          >
+            ×
+          </button>
+        </div>
+      </header>
       <Sidebar
         sessions={sessions}
         activeId={active?.id ?? null}
@@ -198,6 +236,7 @@ export default function App() {
         onDelete={removeSession}
         onRename={renameSession}
         onSettings={() => setShowSettings(true)}
+        onVocab={() => setShowVocab(true)}
       />
       <main className="main">
         {error && (
@@ -231,6 +270,7 @@ export default function App() {
           onPreviewZoom={(z) => api.setZoom(z).catch(() => {})}
         />
       )}
+      {showVocab && <VocabBook memory={memory} onClose={() => setShowVocab(false)} />}
     </div>
   );
 }

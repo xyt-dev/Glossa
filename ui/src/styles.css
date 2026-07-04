@@ -1,3 +1,26 @@
+/* ---- CodeNewRoman Nerd Font (SIL OFL 1.1) ----------------------------- */
+/* Bundled from https://github.com/ryanoasis/nerd-fonts */
+@font-face {
+  font-family: "CodeNewRoman";
+  src: url("./assets/CodeNewRomanNerdFont-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "CodeNewRoman";
+  src: url("./assets/CodeNewRomanNerdFont-Italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "CodeNewRoman";
+  src: url("./assets/CodeNewRomanNerdFont-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
 * {
   margin: 0;
   padding: 0;
@@ -8,15 +31,18 @@ html,
 body,
 #root {
   height: 100%;
+  overflow: hidden;
+  background: transparent;
 }
 
 body {
   font-family:
+    "CodeNewRoman",
     -apple-system, "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei",
     sans-serif;
-  font-size: 14px;
+  font-size: 20px;
   color: var(--fg);
-  background: var(--bg);
+  background: transparent;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
@@ -101,15 +127,70 @@ input[type="number"]::-webkit-outer-spin-button {
 /* ---- 布局 ------------------------------------------------------------ */
 .app {
   display: grid;
-  grid-template-columns: 272px minmax(0, 1fr);
+  grid-template-columns: 400px minmax(0, 1fr);
+  grid-template-rows: 38px minmax(0, 1fr);
   height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+  border-radius: 14px;
+}
+
+.titlebar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  height: 38px;
+  padding-left: 16px;
+  user-select: none;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.titlebar-drag {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  flex: 1;
+  min-width: 0;
+}
+
+.titlebar-title {
+  color: var(--fg-muted);
+  font-size: 16px;
+  letter-spacing: 0.04em;
+}
+
+.window-controls {
+  display: flex;
+  align-self: stretch;
+}
+
+.window-control {
+  width: 46px;
+  color: var(--fg-muted);
+  transition:
+    color 0.12s,
+    background-color 0.12s;
+}
+
+.window-control:hover {
+  color: var(--fg);
+  background: var(--bg-hover);
+}
+
+.window-control.close:hover {
+  color: var(--accent-fg);
+  background: var(--danger);
 }
 
 .main {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  height: 100vh;
+  height: 100%;
 }
 
 /* ---- 侧边栏 ---------------------------------------------------------- */
@@ -140,7 +221,7 @@ input[type="number"]::-webkit-outer-spin-button {
   background: var(--accent);
   color: var(--accent-fg);
   font-weight: 700;
-  font-size: 14px;
+  font-size: 20px;
   box-shadow: 0 6px 18px var(--accent-soft);
 }
 
@@ -212,7 +293,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .session-date {
-  font-size: 11px;
+  font-size: 16px;
   color: var(--fg-faint);
   flex-shrink: 0;
 }
@@ -238,12 +319,15 @@ input[type="number"]::-webkit-outer-spin-button {
 .rename-input {
   width: 100%;
   padding: 2px 6px;
-  font-size: 13px;
+  font-size: 18px;
 }
 
 .sidebar-foot {
   border-top: 1px solid var(--border);
   padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .settings-btn {
@@ -279,7 +363,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .hint-title {
-  font-size: 18px;
+  font-size: 24px;
   font-weight: 600;
   color: var(--fg-muted);
   margin-bottom: 6px;
@@ -304,7 +388,7 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .mode-chip {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: 15px;
   border-radius: 4px;
   padding: 1px 5px;
   background: var(--accent-soft);
@@ -328,7 +412,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .translation-text {
-  font-size: 16px;
+  font-size: 21px;
   line-height: 1.7;
   white-space: pre-wrap;
   word-break: break-word;
@@ -357,24 +441,24 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .word {
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 700;
 }
 
 .ipa {
   font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
   color: var(--ipa);
-  font-size: 13px;
+  font-size: 17px;
 }
 
 .pos {
   font-style: italic;
   color: var(--pos);
-  font-size: 13px;
+  font-size: 17px;
 }
 
 .band {
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 700;
   background: var(--badge-bg);
   color: var(--badge-fg);
@@ -389,7 +473,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .mark-btn {
-  font-size: 12px;
+  font-size: 16px;
   color: var(--fg-faint);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -420,7 +504,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .native-usage .label {
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--ok);
   border: 1px solid var(--ok);
@@ -451,20 +535,20 @@ input[type="number"]::-webkit-outer-spin-button {
 .examples .zh {
   display: block;
   color: var(--fg-muted);
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1.5;
 }
 
 .fallback-note {
   color: var(--danger);
-  font-size: 12px;
+  font-size: 15px;
   margin-bottom: 8px;
 }
 
 .raw-output,
 .raw-stream {
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 12px;
+  font-size: 15px;
   white-space: pre-wrap;
   word-break: break-all;
   color: var(--fg-muted);
@@ -607,7 +691,7 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .mode-toggle button {
   padding: 8px 12px;
-  font-size: 13px;
+  font-size: 18px;
   color: var(--fg-faint);
   transition: all 0.12s;
 }
@@ -660,7 +744,7 @@ input[type="number"]::-webkit-outer-spin-button {
   border-radius: 8px;
   color: var(--danger);
   background: color-mix(in srgb, var(--danger) 10%, transparent);
-  font-size: 13px;
+  font-size: 16px;
   word-break: break-all;
 }
 
@@ -670,12 +754,12 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .error-banner button {
   color: var(--danger);
-  font-size: 16px;
+  font-size: 20px;
 }
 
 /* ---- 设置弹窗 ---------------------------------------------------------- */
 .modal-backdrop {
-  position: fixed;
+  position: absolute;
   inset: 0;
   background: var(--shadow);
   display: flex;
@@ -685,7 +769,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .modal {
-  width: min(640px, 92vw);
+  width: min(760px, 94vw);
   max-height: 86vh;
   display: flex;
   flex-direction: column;
@@ -704,11 +788,11 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .modal-head h2 {
-  font-size: 16px;
+  font-size: 21px;
 }
 
 .close-btn {
-  font-size: 18px;
+  font-size: 24px;
   color: var(--fg-faint);
 }
 
@@ -725,7 +809,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .modal-body section h3 {
-  font-size: 13px;
+  font-size: 18px;
   color: var(--fg-faint);
   font-weight: 600;
   text-transform: uppercase;
@@ -784,7 +868,7 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .settings-error {
   color: var(--danger);
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .modal-foot {
@@ -807,4 +891,135 @@ input[type="number"]::-webkit-outer-spin-button {
   border-color: var(--accent);
   color: var(--accent-fg);
   font-weight: 600;
+}
+
+/* ---- 生词本 ---------------------------------------------------------- */
+.vocab-modal {
+  width: min(760px, 94vw);
+}
+
+.vocab-summary {
+  margin-top: 3px;
+  color: var(--fg-faint);
+  font-size: 16px;
+}
+
+.vocab-toolbar {
+  display: flex;
+  gap: 10px;
+  padding: 14px 18px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.vocab-search {
+  flex: 1;
+  min-width: 0;
+}
+
+.vocab-toolbar select {
+  width: 132px;
+}
+
+.vocab-toolbar select:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.vocab-search-note {
+  padding: 0 18px 8px;
+  color: var(--fg-faint);
+  font-size: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.vocab-list {
+  padding: 14px 18px 18px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vocab-empty {
+  padding: 36px 0;
+  text-align: center;
+  color: var(--fg-faint);
+}
+
+.vocab-entry {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 6px 18px var(--shadow);
+}
+
+.vocab-entry-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.vocab-word-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.vocab-word {
+  color: var(--fg);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.vocab-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--fg-faint);
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.vocab-kind {
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--accent);
+  padding: 1px 7px;
+  background: var(--accent-soft);
+}
+
+.vocab-kind.usage {
+  border-color: var(--ok);
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
+}
+
+.vocab-meaning,
+.vocab-native,
+.vocab-context {
+  margin-top: 8px;
+  line-height: 1.6;
+}
+
+.vocab-meaning {
+  color: var(--fg);
+}
+
+.vocab-native {
+  color: var(--fg-muted);
+}
+
+.vocab-context {
+  color: var(--fg-faint);
+  border-left: 3px solid var(--accent);
+  padding-left: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

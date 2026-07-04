@@ -53,7 +53,7 @@ impl Client {
         format!("{}/chat/completions", profile.base_url.trim_end_matches('/'))
     }
 
-    fn build_body(profile: &Profile, messages: &[ChatMessage], stream: bool, json_mode: bool) -> Value {
+    pub(crate) fn build_body(profile: &Profile, messages: &[ChatMessage], stream: bool, json_mode: bool) -> Value {
         let mut body = json!({
             "model": profile.model,
             "messages": messages,
@@ -62,8 +62,16 @@ impl Client {
         if let Some(t) = profile.temperature {
             body["temperature"] = json!(t);
         }
+        // Agent.rs resolves translate_effort/chat_effort into effort before calling us.
+        // effort=Some(level) → thinking enabled; effort=None → thinking disabled.
+        let is_deepseek = profile.base_url.contains("deepseek");
+        if is_deepseek {
+            body["thinking"] = json!({"type": if profile.effort.is_some() { "enabled" } else { "disabled" }});
+        }
         if let Some(e) = &profile.effort {
-            body["reasoning_effort"] = json!(e);
+            // OpenAI and most compatible APIs don't accept "xhigh" — normalise it.
+            let level = if !is_deepseek && e == "xhigh" { "high" } else { e.as_str() };
+            body["reasoning_effort"] = json!(level);
         }
         if json_mode {
             body["response_format"] = json!({ "type": "json_object" });
@@ -137,5 +145,74 @@ impl Client {
             }
         });
         Ok(Box::pin(stream))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::Profile;
+
+    fn deepseek_profile(effort: Option<&str>) -> Profile {
+        Profile {
+            name: "ds".into(),
+            base_url: "https://api.deepseek.com/v1".into(),
+            api_key: "sk".into(),
+            api_key_env: String::new(),
+            model: "v4".into(),
+            effort: effort.map(String::from),
+            ..Default::default()
+        }
+    }
+
+    fn openai_profile(effort: Option<&str>) -> Profile {
+        Profile {
+            name: "oa".into(),
+            base_url: "https://api.openai.com/v1".into(),
+            api_key: "sk".into(),
+            api_key_env: String::new(),
+            model: "gpt".into(),
+            effort: effort.map(String::from),
+            ..Default::default()
+        }
+    }
+
+    fn messages() -> Vec<ChatMessage> {
+        vec![ChatMessage::user("hi")]
+    }
+
+    #[test]
+    fn no_effort_sends_thinking_disabled_without_reasoning() {
+        let body = Client::build_body(&deepseek_profile(None), &messages(), false, false);
+        assert_eq!(body["thinking"]["type"], "disabled");
+        assert!(body.get("reasoning_effort").is_none());
+    }
+
+    #[test]
+    fn effort_xhigh_sends_thinking_enabled_and_reasoning() {
+        let body = Client::build_body(&deepseek_profile(Some("xhigh")), &messages(), false, false);
+        assert_eq!(body["thinking"]["type"], "enabled");
+        assert_eq!(body["reasoning_effort"], "xhigh");
+    }
+
+    #[test]
+    fn effort_low_sends_thinking_enabled_and_reasoning() {
+        let body = Client::build_body(&deepseek_profile(Some("low")), &messages(), false, false);
+        assert_eq!(body["thinking"]["type"], "enabled");
+        assert_eq!(body["reasoning_effort"], "low");
+    }
+
+    #[test]
+    fn openai_no_thinking_field_and_xhigh_normalised() {
+        let body = Client::build_body(&openai_profile(Some("xhigh")), &messages(), false, false);
+        assert!(body.get("thinking").is_none());
+        assert_eq!(body["reasoning_effort"], "high");
+    }
+
+    #[test]
+    fn openai_no_effort_sends_nothing() {
+        let body = Client::build_body(&openai_profile(None), &messages(), false, false);
+        assert!(body.get("thinking").is_none());
+        assert!(body.get("reasoning_effort").is_none());
     }
 }
