@@ -1,142 +1,93 @@
+<div align="center">
+
 # Glossa
 
-> γλῶσσα — 语言；gloss — 生词旁的注解。
+**不只是翻译，是一位懂你水平的英语私教。**
 
-翻译 + 英语学习的桌面应用：严格翻译之外，模型会基于你的**生词 memory** 挑选 IELTS 7+ 词汇做
-结构化讲解（音标 / 词性 / native 用法 / 例句对照），并通过「标记生词 / 标记用法」持续画像你的
-英语水平，让讲解深度越来越贴合。
+翻译任何中英文本，Glossa 会挑出值得学的词汇和地道表达，
+带音标、例句、母语者用法讲给你听 —— 并记住你标记过的每一个生词，
+让讲解越来越贴合你的真实水平。
 
-- **kernel / UI 分离**：`crates/kernel` 是纯 Rust 核心库（可接任意前端），`src-tauri` + `ui/`（React 19）是 Tauri 2 桌面壳。
-- **会话式 agent UI**：主区是一条对话流；严格翻译与聊天共用一个输入框（Ctrl+M 切换，默认严格翻译）。
-  翻译回合强制结构化 JSON 输出（`response_format` + 解析失败自动修复重试 + 降级），聊天回合流式 markdown，
-  天然携带本会话所有翻译作为上下文。
-- **任意 OpenAI 兼容 API**：TOML 多 profile（base_url / api_key / model / reasoning_effort / temperature / 任意额外字段透传），默认 DeepSeek。
-- **主题**：Gruvbox (morhetz) 深/浅 + Catppuccin Mocha/Latte 官方调色板，界面缩放可调，设置内即时预览。
+Linux · Windows · macOS · 浏览器 · 手机
+
+</div>
+
+---
+
+## 为什么用 Glossa
+
+**翻译工具给你答案，Glossa 让你进步。**
+
+- **结构化讲解，不是一坨译文** —— 长段落逐句对照；IELTS 7+ 的词汇自动生成词卡（音标 / 词性 / 语境释义 / 例句）；原句里的习语、固定搭配、地道句式单独摘出来讲。
+- **会成长的私教** —— 一键标记生词、地道用法、整句收藏。你的标记会成为模型的记忆：生词本偏简单，它讲得更细、选词更基础；生词本进阶，它只挑更高阶的点。用得越久，越懂你。
+- **翻译与追问无缝切换** —— 同一个输入框，`Ctrl+M` 在「翻译」和「聊天」间切换。聊天时自动带上本次翻译的上下文，可以就任何一个词、一个句子继续深挖。
+- **接你自己的模型** —— 任何 OpenAI 兼容 API 都行（默认 DeepSeek）。API key 存在你自己机器上，对话不经过任何第三方。
+- **一处标记，处处同步** —— 电脑上标的生词，手机浏览器打开就在。桌面端和 Web 端共用同一份数据。
+- **好看，且护眼** —— 内置 Gruvbox 与 Catppuccin 四套主题，深浅随心。
 
 ## 安装
 
-从 [Releases](../../releases) 下载对应平台的包（由 CI 三平台自动构建）：
+### Linux / macOS —— 一行命令
 
-### Linux
+```sh
+curl -fsSL https://raw.githubusercontent.com/xyt-dev/Glossa/master/install.sh | sh
+```
 
-| 包 | 安装方式 |
-|---|---|
-| `Glossa_x.y.z_amd64.AppImage` | `chmod +x` 后直接运行，WebKitGTK 已内置，任意发行版可用 |
-| `Glossa_x.y.z_amd64.deb` | `sudo apt install ./Glossa_x.y.z_amd64.deb`（自动安装 webkit2gtk-4.1 依赖） |
-| `Glossa-x.y.z-1.x86_64.rpm` | `sudo dnf install ./Glossa-x.y.z-1.x86_64.rpm` |
-
-Arch 用户建议从源码构建（见下），运行时依赖仅 `webkit2gtk-4.1`。
+安装后运行 `glossa` 打开桌面端。**重复运行这行命令即可更新到最新版。**
 
 ### Windows
 
-下载 `Glossa_x.y.z_x64-setup.exe` 或 `.msi` 双击安装。需要 **WebView2 Runtime**：
-Windows 11 自带；Windows 10 上安装器会自动引导安装。
-未签名应用首次运行若被 SmartScreen 拦截：点「更多信息」→「仍要运行」。
+从 [Releases](https://github.com/xyt-dev/Glossa/releases) 下载 `.msi` 或 `-setup.exe` 双击安装。
+（Windows 10 需要 WebView2 Runtime，安装器会自动引导。）
 
-### macOS
+### 在手机上用
 
-下载 `Glossa_x.y.z_aarch64.dmg`（Apple Silicon），拖入 Applications。
-未签名应用首次打开：右键 →「打开」，或执行 `xattr -cr /Applications/Glossa.app` 后再启动。
+Glossa 自带 Web 服务，手机连同一 WiFi 即可访问：
 
-### 从源码构建（全平台）
-
-前置：**Rust stable** + **Node ≥ 20**，另加各平台 webview 依赖：
-
-```bash
-# Arch
-sudo pacman -S webkit2gtk-4.1 base-devel
-# Debian / Ubuntu
-sudo apt install libwebkit2gtk-4.1-dev build-essential libssl-dev librsvg2-dev
-# Fedora
-sudo dnf install webkit2gtk4.1-devel openssl-devel
-# Windows：安装 Visual Studio Build Tools（C++ 工作负载）；WebView2 参见上文
-# macOS：xcode-select --install
+```sh
+glossa web                 # 电脑上运行，默认端口 8040
 ```
 
-```bash
-cargo install tauri-cli --locked   # 首次
-npm --prefix ui install            # 首次
-cargo tauri build                  # 产物在 target/release/bundle/
-```
+终端会打印局域网地址，手机浏览器打开 `http://<电脑IP>:8040/` 即可。
+需要鉴权时设置 `GLOSSA_TOKEN=你的口令 glossa web`，访问时加 `?token=你的口令`。
 
-### 从源码安装为系统命令（Linux）
-
-想把 Glossa 作为 `glossa` 命令安装到系统里，可以在仓库根目录执行：
-
-```bash
-# 1) 安装 Linux 运行/构建依赖（按发行版三选一）
-sudo pacman -S webkit2gtk-4.1 base-devel
-# sudo apt install libwebkit2gtk-4.1-dev build-essential libssl-dev librsvg2-dev
-# sudo dnf install webkit2gtk4.1-devel openssl-devel
-
-# 2) 构建前端静态资源，供 Tauri 二进制嵌入
-npm --prefix ui ci
-npm --prefix ui run build
-
-# 3) 安装 GUI 启动命令到 Cargo bin 目录。注意 path 是 src-tauri，不是仓库根目录。
-cargo install --path src-tauri --locked --features custom-protocol --force
-glossa
-```
-
-`cargo install` 默认把二进制放到 `~/.cargo/bin/glossa`。如果终端找不到 `glossa`，
-先确认 `~/.cargo/bin` 已加入 `PATH`：
-
-```bash
-echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.profile
-source ~/.profile
-```
-
-如果希望放到全局 `/usr/local/bin`，也可以在 `cargo install` 后执行：
-
-```bash
-sudo install -Dm755 "$HOME/.cargo/bin/glossa" /usr/local/bin/glossa
-```
-
-## Web 模式（浏览器 / 手机）
-
-同一个 `glossa` 命令，两种形态：
-
-```bash
-glossa            # 桌面端（等价 glossa app）
-glossa web        # Web 服务，默认 0.0.0.0:8040，局域网/手机可直接访问
-glossa web --port 9000        # 指定端口
-GLOSSA_TOKEN=口令 glossa web  # 可选：要求 /api 携带 token（配置接口含 API key，
-                              # 不设 token 时启动会打印告警），浏览器用 ?token=口令 访问
-```
-
-也可以在桌面端「设置 → Web 服务」里把 **随桌面端启动** 切为默认开启并设置端口，
-保存立即生效（端口冲突会直接在设置里报错）。Web 端与桌面端共用配置和数据；
-浏览器里用原生缩放（应用内 zoom 仅桌面生效），窄屏自动切换抽屉式侧边栏。
-
-## 开发
-
-```bash
-cargo tauri dev        # 开发运行（热更新）
-cargo test -p kernel   # 核心库测试（wiremock 本地 mock，无需真实 key）
-```
+也可以在桌面端「设置 → Web 服务」里开启，随应用一起启动。
 
 ## 配置
 
-首次运行生成带注释的 `~/.config/glossa/config.toml`（Windows：`%APPDATA%\glossa\`，
-macOS：`~/Library/Application Support/glossa/`），也可在应用内「设置」修改：
-API profiles、模型、effort、IELTS band 下限、默认模式、主题、界面缩放（`[ui] zoom`）。
+首次运行生成带注释的配置文件（Linux `~/.config/glossa/config.toml`，
+Windows `%APPDATA%\glossa\`，macOS `~/Library/Application Support/glossa/`），
+也可在应用内「设置」里改：模型、API key、思考强度、选词难度、主题、Web 端口……
 
-`zoom` 也可以直接写在配置文件里，例如：
+API key 直接填入配置，或留空并导出环境变量（默认 `DEEPSEEK_API_KEY`）。
+生词本和会话都是纯 JSON，存在本地，可自由备份、同步、手改。
 
-```toml
-[ui]
-theme = "gruvbox-light"
-zoom = 1.0
-```
-API key 直接写入 `api_key`，或留空并导出环境变量（默认 `DEEPSEEK_API_KEY`）。
+## 架构一瞥
 
-数据文件（生词本 `vocab.json`、会话 `sessions/*.json`）在平台数据目录
-（Linux：`~/.local/share/glossa/`），纯 JSON，可手改、可同步。
-
-## 架构
+Glossa 的核心是一个 **UI 无关的 Rust 内核**（`kernel`）—— 配置、模型客户端、
+结构化解析、生词记忆、会话存储、agent 循环全在这里。桌面端（Tauri）和 Web 端（axum）
+都只是这个内核之上几十行的薄适配层，前端是同一份 React 代码，运行时自动识别环境。
 
 ```
-crates/kernel   config / client(SSE) / schema / prompt / memory / store / agent
-src-tauri       Tauri 2 commands + Channel 流式转发
-ui              React 19 + Vite + TS（Sidebar / Conversation / WordCard / Settings）
+crates/kernel    纯 Rust 核心（可接任意前端）
+crates/server    Web 适配：REST + 流式 + 内嵌前端
+src-tauri        桌面适配：Tauri 2
+ui               React 19 + Vite + TypeScript
 ```
+
+一套逻辑，处处运行 —— 这是 Glossa 能同时做好桌面、Web 和移动端的原因。
+
+## 从源码构建
+
+需要 Rust stable + Node ≥ 20，Linux 另需 `webkit2gtk-4.1`。
+
+```sh
+npm --prefix ui install
+cargo tauri dev              # 开发运行（桌面端热更新）
+cargo run -p glossa-server   # 运行 Web 服务
+cargo test -p kernel         # 核心库测试
+```
+
+## License
+
+MIT

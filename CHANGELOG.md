@@ -1,5 +1,22 @@
 # Change Log
 
+## Unreleased
+
+### 移动端修复
+
+- 用 `100dvh` 替代 `100vh`：Safari 等移动浏览器的动态工具栏不再遮挡底部输入栏。
+- 弹窗 `z-index` 提到 95（高于抽屉侧边栏 90）；窄屏下打开生词本/设置时自动收起抽屉侧边栏，
+  不再被遮挡。
+
+### 发布 / 安装
+
+- **一行安装脚本** `install.sh`（Linux AppImage / macOS dmg，`curl … | sh`）：
+  拉取最新 Release、原子替换，**重复运行即更新**。Windows 仍走安装包。
+- **应用内更新提示**：桌面端启动时静默比对 GitHub 最新 Release，有新版显示可关闭的横幅
+  （离线/限流静默跳过；不自动下载，尊重用户选择）。
+- 修复 Windows CI 构建：`npm install` 改用 `working-directory: ui`
+  （`npm --prefix ui` 在 Windows 上会误在仓库根找 package.json）。
+
 ## v0.4.0 - 2026-07-04
 
 ### 新增：Web 支持（docs/v0.4-web-architecture 落地）

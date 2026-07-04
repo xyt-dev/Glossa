@@ -47,7 +47,9 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: install frontend dependencies
-        run: npm --prefix ui install
+        # 不用 npm --prefix：Windows 上会错误地在仓库根找 package.json
+        run: npm install
+        working-directory: ui
 
       - uses: tauri-apps/tauri-action@v0
         env:

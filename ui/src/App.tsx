@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getVersion } from "@tauri-apps/api/app";
 import { api } from "./api";
 import { isTauri } from "./platform";
 import type {
@@ -31,6 +32,16 @@ function applyTheme(theme: string) {
 const appWindow = isTauri ? getCurrentWindow() : null;
 
 const NARROW = 768;
+const RELEASES_API = "https://api.github.com/repos/xyt-dev/Glossa/releases/latest";
+
+function isNewer(current: string, latest: string): boolean {
+  const a = current.split(".").map((n) => parseInt(n, 10) || 0);
+  const b = latest.split(".").map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    if ((b[i] ?? 0) !== (a[i] ?? 0)) return (b[i] ?? 0) > (a[i] ?? 0);
+  }
+  return false;
+}
 
 export default function App() {
   const [config, setConfig] = useState<Config | null>(null);
@@ -45,6 +56,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showVocab, setShowVocab] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmReq | null>(null);
+  const [updateTag, setUpdateTag] = useState<string | null>(null);
   // 启动始终默认展开（窄屏抽屉除外），不记忆上次的折叠状态
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= NARROW);
   const didInit = useRef(false);
@@ -92,6 +104,22 @@ export default function App() {
     };
     window.addEventListener("contextmenu", onCtx);
     return () => window.removeEventListener("contextmenu", onCtx);
+  }, []);
+
+  // 桌面端启动时静默检查新版本（web 端由服务端保证是最新构建）
+  useEffect(() => {
+    if (!isTauri) return;
+    (async () => {
+      try {
+        const current = await getVersion();
+        const res = await fetch(RELEASES_API);
+        if (!res.ok) return;
+        const tag = ((await res.json()).tag_name as string | undefined)?.replace(/^v/, "");
+        if (tag && isNewer(current, tag)) setUpdateTag(tag);
+      } catch {
+        // 离线或 API 限流，静默跳过
+      }
+    })();
   }, []);
 
   // Ctrl+M toggles input mode anywhere
@@ -283,8 +311,15 @@ export default function App() {
         onNew={newSession}
         onDelete={removeSession}
         onRename={renameSession}
-        onSettings={() => setShowSettings(true)}
-        onVocab={() => setShowVocab(true)}
+        onSettings={() => {
+          setShowSettings(true);
+          // 窄屏抽屉：打开弹窗时收起侧边栏，避免遮挡
+          if (window.innerWidth < NARROW) setSidebarOpen(false);
+        }}
+        onVocab={() => {
+          setShowVocab(true);
+          if (window.innerWidth < NARROW) setSidebarOpen(false);
+        }}
         onCollapse={toggleSidebar}
       />
       <main className="main">
@@ -296,6 +331,15 @@ export default function App() {
           >
             ☰
           </button>
+        )}
+        {updateTag && (
+          <div className="error-banner update-banner">
+            <span>
+              新版本 v{updateTag} 已发布 — Linux/macOS 重新运行安装脚本即可更新，
+              其他平台见 GitHub Releases
+            </span>
+            <button onClick={() => setUpdateTag(null)}>×</button>
+          </div>
         )}
         {error && (
           <div className="error-banner">

@@ -132,6 +132,8 @@ input[type="number"]::-webkit-outer-spin-button {
   grid-template-columns: 400px minmax(0, 1fr);
   grid-template-rows: 38px minmax(0, 1fr);
   height: 100vh;
+  /* 移动端浏览器（Safari 等）工具栏会吃掉 100vh 底部，dvh 跟随实际可视高度 */
+  height: 100dvh;
   position: relative;
   overflow: hidden;
   background: var(--bg);
@@ -1026,7 +1028,8 @@ input[type="number"]::-webkit-outer-spin-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10;
+  /* 高于移动端抽屉侧边栏（90），弹窗永远不被抽屉盖住 */
+  z-index: 95;
 }
 
 .modal {
@@ -1127,6 +1130,16 @@ input[type="number"]::-webkit-outer-spin-button {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 10px;
+}
+
+.update-banner {
+  border-color: var(--accent);
+  color: var(--fg);
+  background: var(--accent-soft);
+}
+
+.update-banner button {
+  color: var(--fg-muted);
 }
 
 .settings-hint {
@@ -1471,6 +1484,7 @@ body.platform-web .app {
   zoom: 0.85;
   /* CSS zoom 会把 100vh 一起缩小，除回去才能铺满视口 */
   height: calc(100vh / 0.85);
+  height: calc(100dvh / 0.85);
 }
 
 /* ---- 窄屏 / 移动端 ------------------------------------------------------ */
