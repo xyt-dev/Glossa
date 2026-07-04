@@ -48,11 +48,16 @@ case "$OS" in
     mv "$app.download" "$app"
     # 终端入口用 wrapper，而不是直接把 AppImage 命名为 glossa：
     # 1) ~/.local/bin 里只放命令入口，真实 AppImage 放到 ~/.local/lib/glossa；
-    # 2) AppImage 内的 WebKitWebProcess 在部分 Linux 终端环境下会 EGL 崩溃，
-    #    wrapper 只对 AppImage 启动补环境，不污染 cargo install / 开发运行。
+    # 2) 如果用户已有 cargo install 的原生二进制，优先走原生二进制，避开
+    #    AppImage 内 WebKitWebProcess 在部分 Linux 图形栈下的 EGL 崩溃；
+    # 3) 没有 cargo 版时再回退到 AppImage，并只对 AppImage 启动补 WebKit 环境。
     cat > "$bin.download" <<'EOF'
 #!/bin/sh
 set -eu
+native="${GLOSSA_NATIVE:-$HOME/.cargo/bin/glossa}"
+if [ "${GLOSSA_FORCE_APPIMAGE:-0}" != "1" ] && [ -x "$native" ]; then
+  exec "$native" "$@"
+fi
 app="${GLOSSA_APPIMAGE:-$HOME/.local/lib/glossa/glossa.AppImage}"
 export WEBKIT_DISABLE_DMABUF_RENDERER="${WEBKIT_DISABLE_DMABUF_RENDERER:-1}"
 export WEBKIT_DISABLE_COMPOSITING_MODE="${WEBKIT_DISABLE_COMPOSITING_MODE:-1}"
@@ -61,6 +66,9 @@ EOF
     chmod +x "$bin.download"
     mv "$bin.download" "$bin"
     say "已安装/更新: $app"
+    if [ -x "$HOME/.cargo/bin/glossa" ]; then
+      say "检测到 cargo install 版: $HOME/.cargo/bin/glossa；命令入口将优先使用它。"
+    fi
     say "命令入口: $bin（glossa = 桌面端，glossa web = Web 服务）"
     case ":$PATH:" in
       *":$bin_dir:"*) ;;
