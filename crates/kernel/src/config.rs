@@ -26,6 +26,10 @@ max_context_words = 60   # 喂给模型的最近生词条数上限
 default_mode = "translate"  # translate | chat
 max_context_messages = 40   # 发给 API 的历史消息滑动窗口
 
+[web]
+enabled = false   # 桌面端启动时是否同时开启 Web 服务（`glossa web` 命令不受此影响）
+port = 8040       # Web 服务端口（0.0.0.0，局域网可访问）
+
 [[profiles]]
 name = "deepseek"
 base_url = "https://api.deepseek.com/v1"
@@ -48,6 +52,7 @@ pub struct Config {
     pub ui: UiConfig,
     pub memory: MemoryConfig,
     pub session: SessionConfig,
+    pub web: WebConfig,
     pub profiles: Vec<Profile>,
 }
 
@@ -61,6 +66,7 @@ impl Default for Config {
             ui: UiConfig::default(),
             memory: MemoryConfig::default(),
             session: SessionConfig::default(),
+            web: WebConfig::default(),
             profiles: vec![Profile {
                 name: "deepseek".into(),
                 base_url: "https://api.deepseek.com/v1".into(),
@@ -124,6 +130,20 @@ impl Default for SessionConfig {
             default_mode: Mode::Translate,
             max_context_messages: 40,
         }
+    }
+}
+
+/// 桌面端随启的内嵌 Web 服务。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct WebConfig {
+    pub enabled: bool,
+    pub port: u16,
+}
+
+impl Default for WebConfig {
+    fn default() -> Self {
+        Self { enabled: false, port: 8040 }
     }
 }
 
@@ -278,6 +298,8 @@ mod tests {
             "translate should default to no thinking"
         );
         assert_eq!(cfg.session.default_mode, Mode::Translate);
+        assert!(!cfg.web.enabled);
+        assert_eq!(cfg.web.port, 8040);
         assert_eq!(cfg.ui.theme, "gruvbox-light");
         assert_eq!(cfg.ui.zoom, 1.0);
     }

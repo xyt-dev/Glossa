@@ -1,5 +1,64 @@
 # Change Log
 
+## v0.4.0 - 2026-07-04
+
+### 新增：Web 支持（docs/v0.4-web-architecture 落地）
+
+- **kernel::AppCore**：把原先 src-tauri 里的业务胶水（config/store/memory/agent 组装）下沉为
+  kernel 的统一门面，Tauri commands 与 Web handlers 都是薄适配层（src-tauri/state.rs 删除）。
+- **crates/server（glossa-server）**：axum HTTP 适配层。
+  - REST：/api/config、/api/sessions（CRUD + rename）、/api/memory（mark/unmark）。
+  - 流式消息：POST /api/sessions/{id}/messages 返回 **NDJSON 流**（每行一个 SendEvent）。
+    选 NDJSON 而非 SSE：EventSource 只支持 GET，fetch+ReadableStream 逐行解析更简单且移动端可用。
+  - 前端静态资源经 rust-embed **内嵌进二进制**（同源服务，无 CORS）；assets 带 immutable 缓存，
+    未知路径回退 index.html。
+  - **安全模型**：默认绑 127.0.0.1 免鉴权；绑非回环地址（LAN/手机）必须设 GLOSSA_TOKEN
+    （config 接口含 API key，不能裸奔进局域网），前端用 `?token=` 一次性传入后存 sessionStorage
+    并自动携带 Bearer 头。
+- **前端双后端抽象**：api.ts 拆为 Tauri（invoke/Channel）与 HTTP（fetch/NDJSON）两个实现，
+  运行时按 `__TAURI_INTERNALS__` 自动选择，同一个 bundle 同时服务桌面与浏览器。
+
+### Web 端 UI 差异化
+
+- 不渲染自绘标题栏；不应用窗口圆角，自然铺满网页（`body.platform-web` 覆盖）。
+- 不启用应用内 zoom（交给浏览器缩放），设置面板隐藏缩放项。
+- 桌面基准尺寸在网页里偏大：web 端整体按 0.85 缩放（CSS zoom + 100vh 补偿），
+  fixed 弹层（下拉/右键菜单）坐标除以 uiScale 修正。
+- web 端保留浏览器原生右键菜单（桌面端仍屏蔽）。
+
+### 侧边栏折叠（桌面 + Web）
+
+- 侧边栏右上角「«」收起；收起后「☰」浮动在聊天区左上角展开；状态存 localStorage。
+- **移动端适配**：≤768px 侧边栏变抽屉式覆盖层（带遮罩，选中会话自动收起，默认收起），
+  气泡/卡片放宽到全宽、输入栏紧凑化、窄屏 placeholder 缩短。
+
+### 统一 CLI 与内嵌 Web 服务
+
+- `glossa` / `glossa app` → 桌面端；`glossa web` → Web 服务（glossa-server 改为 lib + bin，
+  桌面二进制直接复用 router/serve，`web` 子命令不拉起 GUI）。
+- Web 默认 **0.0.0.0:8040**：局域网无需 `--host` 即可访问，`--port` 指定端口；
+  未设 GLOSSA_TOKEN 时不再拒绝启动，改为打印告警（token 鉴权仍可用）。
+- 配置新增 `[web] enabled / port`：桌面端可随启内嵌 Web 服务；
+  设置面板新增「Web 服务」段（默认关闭/默认开启切换 + 端口），保存立即生效
+  （启停/换端口热切换，bind 失败直接报错到设置界面）。
+- 侧边栏启动始终默认展开（不再记忆折叠状态；窄屏抽屉仍默认收起）。
+- 修复：折叠侧边栏后主区被 Grid 自动放置挤进 0 宽列——sidebar/main 改为显式指定列。
+- 终端输出：开启/关闭事件均有打印；不再显示 0.0.0.0，改为「本机 http://127.0.0.1:端口/」
+  与「局域网 http://真实IP:端口/」可点击链接，标签按 CJK 显示宽度对齐。
+- 局域网 IP 改为枚举网卡（跳过 tun/docker 等虚拟设备、优先私网 IPv4）——
+  UDP 路由探测在 Clash TUN 下会误报 198.18.x fake-ip。
+- 设置项文案：「开启 Web 服务：开启/关闭」。
+
+### 验证
+
+- `cargo test -p kernel` 29 passed；`cargo check` 全 workspace（含 glossa-server，axum 0.8）。
+- `glossa --help` / `glossa web --port 8043` 冒烟：告警输出、静态页 200、config 含 web 段默认值。
+- glossa-server 冒烟：静态页 200、config/sessions/memory REST 全通、rename/delete、SPA 回退、
+  NDJSON 流式收到真实模型 delta（端到端含 LLM）。
+- headless Chromium 截图验证 web 桌面（1500×900，无圆角/无标题栏/折叠按钮）与
+  移动视口（414×896，抽屉收起 + ☰ 浮动按钮）。
+
+
 ## v0.3.0 - 2026-07-04
 
 ### 重构：翻译结果 schema（逐句对照 + 独立 native 表达卡）

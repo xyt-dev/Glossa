@@ -92,6 +92,22 @@ source ~/.profile
 sudo install -Dm755 "$HOME/.cargo/bin/glossa" /usr/local/bin/glossa
 ```
 
+## Web 模式（浏览器 / 手机）
+
+同一个 `glossa` 命令，两种形态：
+
+```bash
+glossa            # 桌面端（等价 glossa app）
+glossa web        # Web 服务，默认 0.0.0.0:8040，局域网/手机可直接访问
+glossa web --port 9000        # 指定端口
+GLOSSA_TOKEN=口令 glossa web  # 可选：要求 /api 携带 token（配置接口含 API key，
+                              # 不设 token 时启动会打印告警），浏览器用 ?token=口令 访问
+```
+
+也可以在桌面端「设置 → Web 服务」里把 **随桌面端启动** 切为默认开启并设置端口，
+保存立即生效（端口冲突会直接在设置里报错）。Web 端与桌面端共用配置和数据；
+浏览器里用原生缩放（应用内 zoom 仅桌面生效），窄屏自动切换抽屉式侧边栏。
+
 ## 开发
 
 ```bash

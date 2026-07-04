@@ -2,6 +2,7 @@
 //! structured translation schema, vocab memory, session store, agent loop).
 
 pub mod agent;
+pub mod app;
 pub mod client;
 pub mod config;
 pub mod memory;

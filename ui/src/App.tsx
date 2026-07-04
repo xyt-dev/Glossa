@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { api } from "./api";
+import { isTauri } from "./platform";
 import type {
   Config,
   MarkInput,
@@ -26,7 +27,10 @@ function applyTheme(theme: string) {
   document.documentElement.dataset.theme = theme;
 }
 
-const appWindow = getCurrentWindow();
+// getCurrentWindow() throws outside Tauri — only touch it on desktop
+const appWindow = isTauri ? getCurrentWindow() : null;
+
+const NARROW = 768;
 
 export default function App() {
   const [config, setConfig] = useState<Config | null>(null);
@@ -41,7 +45,13 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showVocab, setShowVocab] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmReq | null>(null);
+  // 启动始终默认展开（窄屏抽屉除外），不记忆上次的折叠状态
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= NARROW);
   const didInit = useRef(false);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarOpen((open) => !open);
+  }, []);
 
   useEffect(() => {
     if (didInit.current) return; // StrictMode double-mount guard
@@ -52,7 +62,8 @@ export default function App() {
         setConfig(cfg);
         setMode(cfg.session.default_mode);
         applyTheme(cfg.ui.theme);
-        api.setZoom(cfg.ui.zoom).catch(() => {});
+        // web 端不用应用内 zoom，交给浏览器缩放
+        if (isTauri) api.setZoom(cfg.ui.zoom).catch(() => {});
         setMemory(await api.getMemory());
         const list = await api.listSessions();
         if (list.length === 0) {
@@ -71,8 +82,9 @@ export default function App() {
 
   // Suppress the webview's native context menu (mismatched with the theme);
   // inputs keep it for paste. Components with custom menus preventDefault
-  // earlier in the bubble phase anyway.
+  // earlier in the bubble phase anyway. Browser (web) keeps its own menu.
   useEffect(() => {
+    if (!isTauri) return;
     const onCtx = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
       if (target?.closest("input, textarea")) return;
@@ -104,6 +116,8 @@ export default function App() {
       try {
         setActive(await api.loadSession(id));
         setError(null);
+        // 窄屏抽屉：选中会话后自动收起
+        if (window.innerWidth < NARROW) setSidebarOpen(false);
       } catch (e) {
         setError(String(e));
       }
@@ -213,7 +227,7 @@ export default function App() {
     await api.setConfig(cfg);
     setConfig(cfg);
     applyTheme(cfg.ui.theme);
-    api.setZoom(cfg.ui.zoom).catch(() => {});
+    if (isTauri) api.setZoom(cfg.ui.zoom).catch(() => {});
   }, []);
 
   const markedSet = useMemo(
@@ -222,40 +236,45 @@ export default function App() {
   );
 
   return (
-    <div className="app">
-      <header className="titlebar">
-        <div className="titlebar-drag" data-tauri-drag-region="">
-          <span className="titlebar-title" data-tauri-drag-region="">
-            Glossa
-          </span>
-        </div>
-        <div className="window-controls">
-          <button
-            className="window-control"
-            type="button"
-            aria-label="最小化"
-            onClick={() => void appWindow.minimize()}
-          >
-            −
-          </button>
-          <button
-            className="window-control"
-            type="button"
-            aria-label="最大化/还原"
-            onClick={() => void appWindow.toggleMaximize()}
-          >
-            □
-          </button>
-          <button
-            className="window-control close"
-            type="button"
-            aria-label="关闭"
-            onClick={() => void appWindow.close()}
-          >
-            ×
-          </button>
-        </div>
-      </header>
+    <div className={`app${sidebarOpen ? "" : " sidebar-collapsed"}`}>
+      {isTauri && appWindow && (
+        <header className="titlebar">
+          <div className="titlebar-drag" data-tauri-drag-region="">
+            <span className="titlebar-title" data-tauri-drag-region="">
+              Glossa
+            </span>
+          </div>
+          <div className="window-controls">
+            <button
+              className="window-control"
+              type="button"
+              aria-label="最小化"
+              onClick={() => void appWindow.minimize()}
+            >
+              −
+            </button>
+            <button
+              className="window-control"
+              type="button"
+              aria-label="最大化/还原"
+              onClick={() => void appWindow.toggleMaximize()}
+            >
+              □
+            </button>
+            <button
+              className="window-control close"
+              type="button"
+              aria-label="关闭"
+              onClick={() => void appWindow.close()}
+            >
+              ×
+            </button>
+          </div>
+        </header>
+      )}
+      {sidebarOpen && window.innerWidth < NARROW && (
+        <div className="sidebar-backdrop" onClick={toggleSidebar} />
+      )}
       <Sidebar
         sessions={sessions}
         activeId={active?.id ?? null}
@@ -266,8 +285,18 @@ export default function App() {
         onRename={renameSession}
         onSettings={() => setShowSettings(true)}
         onVocab={() => setShowVocab(true)}
+        onCollapse={toggleSidebar}
       />
       <main className="main">
+        {!sidebarOpen && (
+          <button
+            className="sidebar-expand"
+            aria-label="展开侧边栏"
+            onClick={toggleSidebar}
+          >
+            ☰
+          </button>
+        )}
         {error && (
           <div className="error-banner">
             <span>{error}</span>

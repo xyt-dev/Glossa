@@ -43,7 +43,9 @@ export default function InputBar({ mode, busy, disabled, onModeChange, onSend }:
         value={text}
         placeholder={
           mode === "translate"
-            ? "输入要翻译的文本，Enter 发送，Shift+Enter 换行"
+            ? window.innerWidth < 768
+              ? "输入要翻译的文本…"
+              : "输入要翻译的文本，Enter 发送，Shift+Enter 换行"
             : "就翻译内容继续提问…"
         }
         onChange={(e) => setText(e.target.value)}

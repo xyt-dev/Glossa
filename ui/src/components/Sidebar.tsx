@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { uiScale } from "../platform";
 import type { SessionMeta } from "../types";
 
 interface CtxMenu {
@@ -18,6 +19,7 @@ interface Props {
   onRename: (id: string, title: string) => void;
   onSettings: () => void;
   onVocab: () => void;
+  onCollapse: () => void;
 }
 
 function shortDate(iso: string): string {
@@ -40,6 +42,7 @@ export default function Sidebar({
   onRename,
   onSettings,
   onVocab,
+  onCollapse,
 }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -70,6 +73,13 @@ export default function Sidebar({
       <div className="sidebar-head">
         <span className="logo">译</span>
         <span className="app-name">Glossa</span>
+        <button
+          className="sidebar-collapse"
+          aria-label="收起侧边栏"
+          onClick={onCollapse}
+        >
+          «
+        </button>
       </div>
       <button className="new-session" onClick={onNew} disabled={busy}>
         ＋ 新会话
@@ -86,9 +96,10 @@ export default function Sidebar({
             }}
             onContextMenu={(e) => {
               e.preventDefault();
+              // fixed 定位在 CSS zoom 下会被再缩放，坐标除回去
               setMenu({
-                x: Math.min(e.clientX, window.innerWidth - 170),
-                y: Math.min(e.clientY, window.innerHeight - 110),
+                x: Math.min(e.clientX / uiScale, window.innerWidth / uiScale - 170),
+                y: Math.min(e.clientY / uiScale, window.innerHeight / uiScale - 110),
                 id: s.id,
                 title: s.title,
               });

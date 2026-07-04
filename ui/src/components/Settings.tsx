@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Config, Mode, Profile } from "../types";
 import { THEMES } from "../types";
+import { isTauri } from "../platform";
 import Dropdown from "./Dropdown";
 
 const EFFORT_OPTIONS = [
@@ -110,21 +111,23 @@ export default function Settings({
                 }}
               />
             </label>
-            <label>
-              界面缩放（写入 [ui] zoom，1.0 = 100%）
-              <input
-                type="number"
-                step={0.1}
-                min={0.6}
-                max={2.5}
-                value={draft.ui.zoom}
-                onChange={(e) => {
-                  const z = Number(e.target.value) || 1;
-                  patch((d) => (d.ui.zoom = z));
-                  onPreviewZoom(z);
-                }}
-              />
-            </label>
+            {isTauri && (
+              <label>
+                界面缩放（写入 [ui] zoom，1.0 = 100%）
+                <input
+                  type="number"
+                  step={0.1}
+                  min={0.6}
+                  max={2.5}
+                  value={draft.ui.zoom}
+                  onChange={(e) => {
+                    const z = Number(e.target.value) || 1;
+                    patch((d) => (d.ui.zoom = z));
+                    onPreviewZoom(z);
+                  }}
+                />
+              </label>
+            )}
           </section>
 
           <section>
@@ -180,6 +183,39 @@ export default function Settings({
               />
             </label>
           </section>
+
+          {isTauri && (
+            <section>
+              <h3>Web 服务</h3>
+              <label>
+                开启 Web 服务
+                <Dropdown
+                  value={draft.web.enabled ? "on" : "off"}
+                  options={[
+                    { value: "off", label: "关闭" },
+                    { value: "on", label: "开启" },
+                  ]}
+                  onChange={(v) => patch((d) => (d.web.enabled = v === "on"))}
+                />
+              </label>
+              <label>
+                端口
+                <input
+                  type="number"
+                  min={1}
+                  max={65535}
+                  value={draft.web.port}
+                  onChange={(e) =>
+                    patch((d) => (d.web.port = Number(e.target.value) || 8040))
+                  }
+                />
+              </label>
+              <div className="settings-hint">
+                保存后立即生效；开启后局域网设备可访问 http://本机IP:{draft.web.port}/
+                （也可随时用 `glossa web` 单独启动）。
+              </div>
+            </section>
+          )}
 
           <section>
             <h3>API Profiles</h3>

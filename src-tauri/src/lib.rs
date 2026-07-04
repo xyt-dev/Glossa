@@ -1,7 +1,10 @@
 mod commands;
-mod state;
+mod web;
 
-use state::AppState;
+use std::sync::Arc;
+
+use kernel::app::AppCore;
+use web::WebServer;
 
 /// WebKitGTK honors http(s)_proxy even for localhost; without a no_proxy
 /// exemption the vite dev server gets routed through the system proxy and the
@@ -32,14 +35,26 @@ pub fn run() {
     #[cfg(all(debug_assertions, target_os = "linux"))]
     exempt_localhost_from_proxy();
 
-    let state = AppState::init().expect("failed to initialize glossa kernel");
-    let initial_zoom = state.config.try_lock().map(|c| c.ui.zoom).unwrap_or(1.0);
+    let core = Arc::new(AppCore::init().expect("failed to initialize glossa kernel"));
+    let initial_config = core.try_config();
+    let initial_zoom = initial_config.as_ref().map(|c| c.ui.zoom).unwrap_or(1.0);
     tauri::Builder::default()
-        .manage(state)
+        .manage(core)
+        .manage(WebServer::default())
         .setup(move |app| {
             use tauri::Manager;
             if let Some(win) = app.get_webview_window("main") {
                 let _ = win.set_zoom(initial_zoom);
+            }
+            // 配置了随启 Web 服务则在后台拉起（失败只记日志，不阻塞桌面端）
+            if let Some(cfg) = initial_config.clone().filter(|c| c.web.enabled) {
+                let web = app.state::<WebServer>().inner().clone();
+                let core = app.state::<Arc<AppCore>>().inner().clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) = web.sync(&cfg, core).await {
+                        eprintln!("{e}");
+                    }
+                });
             }
             Ok(())
         })

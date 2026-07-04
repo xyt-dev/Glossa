@@ -120,6 +120,10 @@ export interface Config {
     default_mode: Mode;
     max_context_messages: number;
   };
+  web: {
+    enabled: boolean;
+    port: number;
+  };
   profiles: Profile[];
 }
 

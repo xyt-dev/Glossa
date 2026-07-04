@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { uiScale } from "../platform";
 
 export interface DropdownOption {
   value: string;
@@ -40,11 +41,20 @@ export default function Dropdown({ value, options, onChange, disabled, title, cl
       setOpen(false);
       return;
     }
-    const r = btnRef.current!.getBoundingClientRect();
+    // CSS zoom（web 缩放）会再乘一次 fixed 定位的 px，坐标要除回去
+    const z = uiScale;
+    const rect = btnRef.current!.getBoundingClientRect();
+    const r = {
+      left: rect.left / z,
+      top: rect.top / z,
+      bottom: rect.bottom / z,
+      width: rect.width / z,
+    };
+    const viewH = window.innerHeight / z;
     const margin = 8;
-    const below = window.innerHeight - r.bottom - margin;
+    const below = viewH - r.bottom - margin;
     const above = r.top - margin;
-    const desired = Math.min(options.length * 48 + 12, Math.round(window.innerHeight * 0.6));
+    const desired = Math.min(options.length * 48 + 12, Math.round(viewH * 0.6));
     const up = below < desired && above > below;
     setPos({
       left: r.left,
@@ -95,7 +105,7 @@ export default function Dropdown({ value, options, onChange, disabled, title, cl
             width: pos.width,
             maxHeight: pos.maxHeight,
             ...(pos.up
-              ? { bottom: window.innerHeight - pos.top }
+              ? { bottom: window.innerHeight / uiScale - pos.top }
               : { top: pos.top }),
           }}
           onMouseDown={(e) => e.stopPropagation()}
