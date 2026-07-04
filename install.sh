@@ -110,11 +110,14 @@ EOF
     trap 'rm -rf "$tmp"' EXIT
     say "下载 $(basename "$url") ..."
     curl -fL --progress-bar -o "$tmp/glossa.dmg" "$url"
-    mnt=$(hdiutil attach -nobrowse -readonly "$tmp/glossa.dmg" | awk '/\/Volumes\//{print $NF; exit}')
-    [ -n "$mnt" ] || die "挂载 dmg 失败"
+    # 显式挂载点，不依赖 /Volumes 解析，也避开 hdiutil 自动挂载的 deprecation 提示
+    mnt="$tmp/mnt"
+    mkdir -p "$mnt"
+    hdiutil attach -nobrowse -readonly -noverify -quiet -mountpoint "$mnt" "$tmp/glossa.dmg"
+    [ -d "$mnt/Glossa.app" ] || die "dmg 中没有 Glossa.app"
     rm -rf "/Applications/Glossa.app"
     cp -R "$mnt/Glossa.app" /Applications/
-    hdiutil detach "$mnt" >/dev/null
+    hdiutil detach "$mnt" -quiet >/dev/null 2>&1 || true
     # 未签名应用去隔离标记，避免“已损坏”提示
     xattr -cr /Applications/Glossa.app 2>/dev/null || true
     say "已安装/更新: /Applications/Glossa.app"
