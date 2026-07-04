@@ -72,10 +72,10 @@ export default function Sidebar({
   return (
     <aside className="sidebar">
       <div className="sidebar-head">
-        <span className="logo">
-          <Logo size={17} />
+        <span className="wordmark" aria-label="Glossa">
+          <Logo size={24} />
+          <span className="wordmark-text">lossa</span>
         </span>
-        <span className="app-name">Glossa</span>
         <button
           className="sidebar-collapse"
           aria-label="收起侧边栏"

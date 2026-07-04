@@ -55,10 +55,23 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          # on tag pushes, also create a draft GitHub release with the bundles
-          tagName: ${{ startsWith(github.ref, 'refs/tags/') && 'v__VERSION__' || '' }}
-          releaseName: ${{ startsWith(github.ref, 'refs/tags/') && 'Glossa v__VERSION__' || '' }}
+          # push 一个 v* tag 即会创建 Release，并把三平台安装包作为附件上传。
+          # 用实际 push 的 tag 名，保证 release 的 tag 与之一致。
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          releaseName: ${{ startsWith(github.ref, 'refs/tags/') && format('Glossa {0}', github.ref_name) || '' }}
+          releaseBody: |
+            ## 安装
+
+            **Linux / macOS** — 一行命令（重复运行即更新到最新版）：
+            ```sh
+            curl -fsSL https://raw.githubusercontent.com/xyt-dev/Glossa/master/install.sh | sh
+            ```
+
+            **Windows** — 下载下方 `.msi` 或 `-setup.exe` 双击安装（Win10 需 WebView2，安装器会引导）。
+
+            完整更新说明见 [CHANGELOG](https://github.com/xyt-dev/Glossa/blob/master/CHANGELOG.md)。
           releaseDraft: true
+          prerelease: false
 
       - name: upload bundles
         uses: actions/upload-artifact@v4

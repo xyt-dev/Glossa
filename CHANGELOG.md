@@ -1,6 +1,6 @@
 # Change Log
 
-## Unreleased
+## v0.4.2 - 2026-07-04
 
 ### 移动端修复
 
@@ -16,6 +16,14 @@
   （离线/限流静默跳过；不自动下载，尊重用户选择）。
 - 修复 Windows CI 构建：`npm install` 改用 `working-directory: ui`
   （`npm --prefix ui` 在 Windows 上会误在仓库根找 package.json）。
+
+### 品牌 / 发布
+
+- 软件内 logo 改为**词标**：G 字形（Logo 组件）直接替换首字母，与 "lossa" 连成 Glossa，
+  去掉原来的方块 badge 背景。
+- README 重写为介绍版：顶部图标 hero、平台徽章、mermaid 架构图、加粗全平台优势。
+- 修复 Release 无安装包/无说明：补 `LICENSE`（MIT）；CI 用实际 push 的 tag 名建 Release，
+  附带安装说明 `releaseBody`；push `v*` tag 即产出三平台安装包。
 
 ## v0.4.0 - 2026-07-04
 
