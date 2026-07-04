@@ -64,13 +64,15 @@ jobs:
 
             **Linux / macOS** — 一行命令（重复运行即更新到最新版）：
             ```sh
-            curl -fsSL https://raw.githubusercontent.com/xyt-dev/Glossa/master/install.sh | sh
+            curl -fsSL https://raw.githubusercontent.com/xyt-dev/Glossa/main/install.sh | sh
             ```
 
             **Windows** — 下载下方 `.msi` 或 `-setup.exe` 双击安装（Win10 需 WebView2，安装器会引导）。
 
-            完整更新说明见 [CHANGELOG](https://github.com/xyt-dev/Glossa/blob/master/CHANGELOG.md)。
-          releaseDraft: true
+            完整更新说明见 [CHANGELOG](https://github.com/xyt-dev/Glossa/blob/main/CHANGELOG.md)。
+          # 直接发布（非草稿），这样 install.sh 的 /releases/latest 能立即取到；
+          # push tag 即视为有意发版，CI 通过后自动公开。
+          releaseDraft: false
           prerelease: false
 
       - name: upload bundles

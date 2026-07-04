@@ -54,7 +54,7 @@
 ### Linux / macOS —— 一行命令
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/xyt-dev/Glossa/master/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/xyt-dev/Glossa/main/install.sh | sh
 ```
 
 安装后运行 `glossa` 打开桌面端。**重复运行这行命令即可更新到最新版。**

@@ -1,6 +1,6 @@
 #!/bin/sh
 # Glossa 安装/更新脚本（Linux & macOS）
-#   curl -fsSL https://raw.githubusercontent.com/xyt-dev/Glossa/master/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/xyt-dev/Glossa/main/install.sh | sh
 # 幂等：重复运行即更新到最新 Release。
 # Windows 请从 Releases 页面下载 .msi / -setup.exe。
 
