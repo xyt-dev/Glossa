@@ -27,49 +27,66 @@ urls=$(printf '%s' "$json" | grep '"browser_download_url"' | sed 's/.*"\(https[^
 case "$OS" in
   Linux)
     case "$ARCH" in
-      x86_64 | amd64) pat='(amd64|x86_64).*\.AppImage$' ;;
-      aarch64 | arm64) pat='(aarch64|arm64).*\.AppImage$' ;;
+      x86_64 | amd64)
+        arch_re='(x86_64|amd64)'
+        ;;
+      aarch64 | arm64)
+        arch_re='(aarch64|arm64)'
+        ;;
       *) die "未支持的架构: $ARCH" ;;
     esac
-    url=$(printf '%s\n' "$urls" | grep -E "$pat" | head -1 || true)
-    # 未标注架构的 AppImage 视为 x86_64
-    [ -n "$url" ] || url=$(printf '%s\n' "$urls" | grep -E '\.AppImage$' | head -1 || true)
-    [ -n "$url" ] || die "Release 中没有 AppImage 资产"
 
     bin_dir="${GLOSSA_INSTALL_DIR:-$HOME/.local/bin}"
-    app_dir="$HOME/.local/lib/glossa"
-    app="$app_dir/glossa.AppImage"
     bin="$bin_dir/glossa"
-    mkdir -p "$bin_dir" "$app_dir"
-    say "下载 $(basename "$url") ..."
-    curl -fL --progress-bar -o "$app.download" "$url"
-    chmod +x "$app.download"
-    # 原子替换：正在运行的旧版本不受影响，下次启动即新版。
-    mv "$app.download" "$app"
-    # 终端入口用 wrapper，而不是直接把 AppImage 命名为 glossa：
-    # 1) ~/.local/bin 里只放命令入口，真实 AppImage 放到 ~/.local/lib/glossa；
-    # 2) 如果用户已有 cargo install 的原生二进制，优先走原生二进制，避开
-    #    AppImage 内 WebKitWebProcess 在部分 Linux 图形栈下的 EGL 崩溃；
-    # 3) 没有 cargo 版时再回退到 AppImage，并只对 AppImage 启动补 WebKit 环境。
-    cat > "$bin.download" <<'EOF'
+    mkdir -p "$bin_dir"
+
+    native_url=$(
+      printf '%s\n' "$urls" |
+        grep -Ei "(linux.*$arch_re|$arch_re.*linux).*\.tar\.gz$" |
+        head -1 || true
+    )
+    if [ -n "$native_url" ]; then
+      tmp=$(mktemp -d)
+      trap 'rm -rf "$tmp"' EXIT
+      say "下载 $(basename "$native_url") ..."
+      curl -fL --progress-bar -o "$tmp/glossa.tar.gz" "$native_url"
+      tar -xzf "$tmp/glossa.tar.gz" -C "$tmp"
+      [ -f "$tmp/glossa" ] || die "Linux tarball 中没有 glossa 二进制"
+      chmod +x "$tmp/glossa"
+      mv "$tmp/glossa" "$bin.download"
+      mv "$bin.download" "$bin"
+      say "已安装/更新 native 二进制: $bin"
+    else
+      case "$ARCH" in
+        x86_64 | amd64) pat='(amd64|x86_64).*\.AppImage$' ;;
+        aarch64 | arm64) pat='(aarch64|arm64).*\.AppImage$' ;;
+      esac
+      url=$(printf '%s\n' "$urls" | grep -E "$pat" | head -1 || true)
+      # 未标注架构的 AppImage 视为 x86_64
+      [ -n "$url" ] || url=$(printf '%s\n' "$urls" | grep -E '\.AppImage$' | head -1 || true)
+      [ -n "$url" ] || die "Release 中没有 Linux native tarball 或 AppImage 资产"
+
+      app_dir="$HOME/.local/lib/glossa"
+      app="$app_dir/glossa.AppImage"
+      mkdir -p "$app_dir"
+      say "下载 $(basename "$url") ..."
+      curl -fL --progress-bar -o "$app.download" "$url"
+      chmod +x "$app.download"
+      # 原子替换：正在运行的旧版本不受影响，下次启动即新版。
+      mv "$app.download" "$app"
+      cat > "$bin.download" <<'EOF'
 #!/bin/sh
 set -eu
-native="${GLOSSA_NATIVE:-$HOME/.cargo/bin/glossa}"
-if [ "${GLOSSA_FORCE_APPIMAGE:-0}" != "1" ] && [ -x "$native" ]; then
-  exec "$native" "$@"
-fi
 app="${GLOSSA_APPIMAGE:-$HOME/.local/lib/glossa/glossa.AppImage}"
 export WEBKIT_DISABLE_DMABUF_RENDERER="${WEBKIT_DISABLE_DMABUF_RENDERER:-1}"
 export WEBKIT_DISABLE_COMPOSITING_MODE="${WEBKIT_DISABLE_COMPOSITING_MODE:-1}"
 exec "$app" "$@"
 EOF
-    chmod +x "$bin.download"
-    mv "$bin.download" "$bin"
-    say "已安装/更新: $app"
-    if [ -x "$HOME/.cargo/bin/glossa" ]; then
-      say "检测到 cargo install 版: $HOME/.cargo/bin/glossa；命令入口将优先使用它。"
+      chmod +x "$bin.download"
+      mv "$bin.download" "$bin"
+      say "已安装/更新 AppImage fallback: $app"
+      say "命令入口: $bin（glossa = 桌面端，glossa web = Web 服务）"
     fi
-    say "命令入口: $bin（glossa = 桌面端，glossa web = Web 服务）"
     case ":$PATH:" in
       *":$bin_dir:"*) ;;
       *) say "提示: 请把 $bin_dir 加入 PATH" ;;

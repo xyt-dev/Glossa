@@ -80,6 +80,20 @@ jobs:
           releaseDraft: false
           prerelease: false
 
+      - name: package linux native binary
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          mkdir -p target/release/native
+          cp target/release/glossa target/release/native/glossa
+          chmod +x target/release/native/glossa
+          tar -C target/release/native -czf "target/release/glossa-${GITHUB_REF_NAME}-linux-x86_64.tar.gz" glossa
+
+      - name: upload linux native binary to release
+        if: matrix.platform == 'ubuntu-latest'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${GITHUB_REF_NAME}" "target/release/glossa-${GITHUB_REF_NAME}-linux-x86_64.tar.gz" --clobber
+
       - name: upload bundles
         uses: actions/upload-artifact@v4
         with:
@@ -91,4 +105,5 @@ jobs:
             target/release/bundle/**/*.msi
             target/release/bundle/**/*.exe
             target/release/bundle/**/*.dmg
+            target/release/glossa-*-linux-*.tar.gz
           if-no-files-found: ignore
