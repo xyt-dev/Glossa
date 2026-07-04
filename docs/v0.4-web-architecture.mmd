@@ -1,0 +1,14 @@
+flowchart TD
+    UI[React UI]
+
+    UI -->|Tauri invoke / Channel| Tauri[Tauri desktop adapter]
+    UI -->|HTTP / SSE| Web[Web server adapter]
+
+    Tauri --> Core[kernel::AppCore]
+    Web --> Core
+
+    Core --> Config[config]
+    Core --> Store[sessions]
+    Core --> Memory[vocab memory]
+    Core --> Agent[agent]
+    Core --> Client[LLM client]
