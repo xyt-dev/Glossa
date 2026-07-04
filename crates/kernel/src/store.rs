@@ -73,7 +73,10 @@ impl SessionStore {
 
     fn path(&self, id: &str) -> PathBuf {
         // ids are uuids we generate; sanitize anyway so a bad id can't escape the dir
-        let safe: String = id.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-').collect();
+        let safe: String = id
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric() || *c == '-')
+            .collect();
         self.dir.join(format!("{safe}.json"))
     }
 

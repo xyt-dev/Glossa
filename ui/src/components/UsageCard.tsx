@@ -2,13 +2,12 @@ import type { MarkInput, UsageEntry } from "../types";
 
 interface Props {
   entry: UsageEntry;
-  context: string | null;
   markedSet: Set<string>;
   onToggleMark: (input: MarkInput, marked: boolean) => void;
 }
 
 /** Card for a native expression quoted from the source sentence. */
-export default function UsageCard({ entry, context, markedSet, onToggleMark }: Props) {
+export default function UsageCard({ entry, markedSet, onToggleMark }: Props) {
   const marked = markedSet.has(`usage:${entry.usage.toLowerCase()}`);
 
   const input: MarkInput = {
@@ -18,7 +17,7 @@ export default function UsageCard({ entry, context, markedSet, onToggleMark }: P
     pos: null,
     meaning: null,
     native_usage: entry.explanation,
-    context,
+    examples: entry.examples,
   };
 
   return (
@@ -29,7 +28,6 @@ export default function UsageCard({ entry, context, markedSet, onToggleMark }: P
         <span className="word-actions">
           <button
             className={`mark-btn${marked ? " on" : ""}`}
-            title={marked ? "取消标记用法" : "标记 native 用法"}
             onClick={() => onToggleMark(input, marked)}
           >
             {marked ? "◆ 用法" : "◇ 用法"}

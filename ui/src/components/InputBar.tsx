@@ -23,7 +23,7 @@ export default function InputBar({ mode, busy, disabled, onModeChange, onSend }:
 
   return (
     <div className="input-bar">
-      <div className="mode-toggle" title="Ctrl+M 切换模式">
+      <div className="mode-toggle" data-tip="Ctrl+M 切换模式">
         <button
           className={mode === "translate" ? "on" : ""}
           onClick={() => onModeChange("translate")}

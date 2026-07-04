@@ -2,12 +2,11 @@ import type { MarkInput, WordEntry } from "../types";
 
 interface Props {
   entry: WordEntry;
-  context: string | null;
   markedSet: Set<string>;
   onToggleMark: (input: MarkInput, marked: boolean) => void;
 }
 
-export default function WordCard({ entry, context, markedSet, onToggleMark }: Props) {
+export default function WordCard({ entry, markedSet, onToggleMark }: Props) {
   const marked = markedSet.has(`word:${entry.word.toLowerCase()}`);
 
   const input: MarkInput = {
@@ -17,7 +16,7 @@ export default function WordCard({ entry, context, markedSet, onToggleMark }: Pr
     pos: entry.pos,
     meaning: entry.meaning,
     native_usage: entry.native_usage,
-    context,
+    examples: entry.examples,
   };
 
   return (
@@ -28,14 +27,13 @@ export default function WordCard({ entry, context, markedSet, onToggleMark }: Pr
         {entry.ipa && <span className="ipa">{entry.ipa}</span>}
         {entry.pos && <span className="pos">{entry.pos}</span>}
         {entry.ielts_band != null && (
-          <span className="band" title="IELTS band">
+          <span className="band" data-tip="IELTS band">
             {entry.ielts_band}
           </span>
         )}
         <span className="word-actions">
           <button
             className={`mark-btn${marked ? " on" : ""}`}
-            title={marked ? "取消标记生词" : "标记为生词"}
             onClick={() => onToggleMark(input, marked)}
           >
             {marked ? "★ 生词" : "☆ 生词"}

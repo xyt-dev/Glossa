@@ -39,13 +39,19 @@ pub fn system_prompt(memory_context: &str, min_ielts_band: f32) -> String {
 {memory}"#,
         schema = SCHEMA_TEXT,
         band = min_ielts_band,
-        memory = if memory_context.trim().is_empty() { "（暂无标记记录，按 band 下限选词，讲解详略适中。）" } else { memory_context },
+        memory = if memory_context.trim().is_empty() {
+            "（暂无标记记录，按 band 下限选词，讲解详略适中。）"
+        } else {
+            memory_context
+        },
     )
 }
 
 /// One-shot repair conversation when a [translate] turn fails to parse.
 pub fn repair_messages(raw: &str, err: &str) -> (String, String) {
-    let system = "你负责把不合规的输出修复为合法 JSON。只输出修复后的 JSON 对象本身，不要任何其他文字。".to_string();
+    let system =
+        "你负责把不合规的输出修复为合法 JSON。只输出修复后的 JSON 对象本身，不要任何其他文字。"
+            .to_string();
     let user = format!(
         "下面这段输出应当是符合此结构的 JSON：\n{SCHEMA_TEXT}\n\n但解析失败了（错误：{err}）。请修复并只输出 JSON：\n\n{raw}"
     );

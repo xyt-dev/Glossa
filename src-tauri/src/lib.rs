@@ -12,8 +12,12 @@ fn exempt_localhost_from_proxy() {
     let cur = std::env::var("no_proxy")
         .or_else(|_| std::env::var("NO_PROXY"))
         .unwrap_or_default();
-    let mut parts: Vec<String> =
-        cur.split(',').map(str::trim).filter(|s| !s.is_empty()).map(String::from).collect();
+    let mut parts: Vec<String> = cur
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(String::from)
+        .collect();
     for host in ["localhost", "127.0.0.1"] {
         if !parts.iter().any(|p| p == host) {
             parts.push(host.to_string());

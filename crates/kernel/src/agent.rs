@@ -16,14 +16,24 @@ use crate::{Mode, Result};
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum SendEvent {
     /// Raw token delta (typewriter display).
-    Delta { text: String },
+    Delta {
+        text: String,
+    },
     /// Translate turn parsed successfully.
-    Parsed { result: TranslationResult },
+    Parsed {
+        result: TranslationResult,
+    },
     /// Translate turn could not be parsed even after repair; show raw text.
-    Fallback { raw: String },
+    Fallback {
+        raw: String,
+    },
     /// Turn persisted; session meta may carry a new auto-generated title.
-    Done { session: SessionMeta },
-    Error { message: String },
+    Done {
+        session: SessionMeta,
+    },
+    Error {
+        message: String,
+    },
 }
 
 fn now() -> String {
@@ -46,7 +56,11 @@ fn history_to_api(messages: &[Message], window: usize) -> Vec<ChatMessage> {
                 Mode::Translate => m
                     .raw
                     .clone()
-                    .or_else(|| m.result.as_ref().and_then(|r| serde_json::to_string(r).ok()))
+                    .or_else(|| {
+                        m.result
+                            .as_ref()
+                            .and_then(|r| serde_json::to_string(r).ok())
+                    })
                     .map(ChatMessage::assistant),
                 Mode::Chat => m.text.clone().map(ChatMessage::assistant),
             },
@@ -75,9 +89,14 @@ pub async fn send(
     let mem = memory.load()?;
     let mem_ctx = MemoryStore::prompt_context(&mem, config.memory.max_context_words);
 
-    let mut api_messages =
-        vec![ChatMessage::system(prompt::system_prompt(&mem_ctx, config.memory.min_ielts_band))];
-    api_messages.extend(history_to_api(&session.messages, config.session.max_context_messages));
+    let mut api_messages = vec![ChatMessage::system(prompt::system_prompt(
+        &mem_ctx,
+        config.memory.min_ielts_band,
+    ))];
+    api_messages.extend(history_to_api(
+        &session.messages,
+        config.session.max_context_messages,
+    ));
     api_messages.push(ChatMessage::user(prompt::tag_user_text(mode, &text)));
 
     // Persist the user turn immediately so it survives a failed request.
@@ -131,13 +150,25 @@ pub async fn send(
                 session.messages.push(msg);
                 session.updated = now();
                 if let Err(e) = store.save(&session) {
-                    let _ = tx.send(SendEvent::Error { message: e.to_string() }).await;
+                    let _ = tx
+                        .send(SendEvent::Error {
+                            message: e.to_string(),
+                        })
+                        .await;
                     return;
                 }
-                let _ = tx.send(SendEvent::Done { session: session.meta() }).await;
+                let _ = tx
+                    .send(SendEvent::Done {
+                        session: session.meta(),
+                    })
+                    .await;
             }
             Err(e) => {
-                let _ = tx.send(SendEvent::Error { message: e.to_string() }).await;
+                let _ = tx
+                    .send(SendEvent::Error {
+                        message: e.to_string(),
+                    })
+                    .await;
             }
         }
     });
@@ -146,7 +177,10 @@ pub async fn send(
 
 enum Outcome {
     Chat(String),
-    Translated { result: TranslationResult, raw: String },
+    Translated {
+        result: TranslationResult,
+        raw: String,
+    },
     Fallback(String),
 }
 
@@ -171,18 +205,30 @@ async fn run_turn(
         Mode::Chat => Ok(Outcome::Chat(full)),
         Mode::Translate => match schema::parse_translation(&full) {
             Ok(result) => {
-                let _ = tx.send(SendEvent::Parsed { result: result.clone() }).await;
+                let _ = tx
+                    .send(SendEvent::Parsed {
+                        result: result.clone(),
+                    })
+                    .await;
                 Ok(Outcome::Translated { result, raw: full })
             }
             Err(err) => {
                 let (sys, usr) = prompt::repair_messages(&full, &err.to_string());
                 let repaired = client
-                    .chat_once(profile, &[ChatMessage::system(sys), ChatMessage::user(usr)], true)
+                    .chat_once(
+                        profile,
+                        &[ChatMessage::system(sys), ChatMessage::user(usr)],
+                        true,
+                    )
                     .await
                     .and_then(|raw| schema::parse_translation(&raw).map(|r| (r, raw)));
                 match repaired {
                     Ok((result, raw)) => {
-                        let _ = tx.send(SendEvent::Parsed { result: result.clone() }).await;
+                        let _ = tx
+                            .send(SendEvent::Parsed {
+                                result: result.clone(),
+                            })
+                            .await;
                         Ok(Outcome::Translated { result, raw })
                     }
                     Err(_) => {
@@ -229,14 +275,16 @@ mod tests {
         let memory = MemoryStore::new(dir.path().join("vocab.json"));
         let store = SessionStore::new(dir.path().join("sessions"));
         let session = store.create().unwrap();
-        Fixture { _dir: dir, config, memory, store, session }
+        Fixture {
+            _dir: dir,
+            config,
+            memory,
+            store,
+            session,
+        }
     }
 
-    async fn collect(
-        f: &Fixture,
-        text: &str,
-        mode: Mode,
-    ) -> Vec<SendEvent> {
+    async fn collect(f: &Fixture, text: &str, mode: Mode) -> Vec<SendEvent> {
         let stream = send(
             Client::direct(),
             f.config.clone(),
@@ -259,7 +307,9 @@ mod tests {
         let (a, b) = good.split_at(16);
         Mock::given(method("POST"))
             .and(path("/chat/completions"))
-            .and(body_partial_json(json!({"stream": true, "response_format": {"type": "json_object"}})))
+            .and(body_partial_json(
+                json!({"stream": true, "response_format": {"type": "json_object"}}),
+            ))
             .respond_with(
                 ResponseTemplate::new(200).set_body_raw(sse_body(&[a, b]), "text/event-stream"),
             )
@@ -280,7 +330,10 @@ mod tests {
 
         let saved = f.store.load(&f.session.id).unwrap();
         assert_eq!(saved.messages.len(), 2);
-        assert_eq!(saved.messages[1].result.as_ref().unwrap().words[0].word, "ubiquitous");
+        assert_eq!(
+            saved.messages[1].result.as_ref().unwrap().words[0].word,
+            "ubiquitous"
+        );
         assert!(saved.messages[1].raw.is_some());
     }
 
@@ -308,10 +361,15 @@ mod tests {
 
         let f = fixture(&server).await;
         let events = collect(&f, "hello", Mode::Translate).await;
-        assert!(events.iter().any(|e| matches!(e, SendEvent::Parsed { result } if result.translation == "你好")));
+        assert!(events
+            .iter()
+            .any(|e| matches!(e, SendEvent::Parsed { result } if result.translation == "你好")));
 
         let saved = f.store.load(&f.session.id).unwrap();
-        assert_eq!(saved.messages[1].result.as_ref().unwrap().translation, "你好");
+        assert_eq!(
+            saved.messages[1].result.as_ref().unwrap().translation,
+            "你好"
+        );
     }
 
     #[tokio::test]
@@ -320,10 +378,10 @@ mod tests {
         Mock::given(method("POST"))
             .and(path("/chat/completions"))
             .and(body_partial_json(json!({"stream": true})))
-            .respond_with(ResponseTemplate::new(200).set_body_raw(
-                sse_body(&["not json at all"]),
-                "text/event-stream",
-            ))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_raw(sse_body(&["not json at all"]), "text/event-stream"),
+            )
             .mount(&server)
             .await;
         Mock::given(method("POST"))
@@ -337,7 +395,9 @@ mod tests {
 
         let f = fixture(&server).await;
         let events = collect(&f, "hello", Mode::Translate).await;
-        assert!(events.iter().any(|e| matches!(e, SendEvent::Fallback { raw } if raw.contains("not json"))));
+        assert!(events
+            .iter()
+            .any(|e| matches!(e, SendEvent::Fallback { raw } if raw.contains("not json"))));
         let saved = f.store.load(&f.session.id).unwrap();
         assert!(saved.messages[1].result.is_none());
         assert!(saved.messages[1].raw.is_some());
@@ -389,7 +449,10 @@ mod tests {
 
         let saved = f.store.load(&f.session.id).unwrap();
         assert_eq!(saved.messages.len(), 4);
-        assert_eq!(saved.messages[3].text.as_deref(), Some("**ubiquitous** 的意思是无处不在"));
+        assert_eq!(
+            saved.messages[3].text.as_deref(),
+            Some("**ubiquitous** 的意思是无处不在")
+        );
 
         // history replay: translate reply goes out as its raw JSON
         let api = history_to_api(&saved.messages, 40);

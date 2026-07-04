@@ -30,10 +30,8 @@ export default function Conversation({
     return <div className="conversation empty-hint">新建一个会话开始使用</div>;
   }
 
-  let lastUserText: string | null = null;
   const items = session.messages.map((m, i) => {
     if (m.role === "user") {
-      lastUserText = m.text ?? null;
       return (
         <div key={i} className="turn user">
           <div className="user-bubble">
@@ -51,7 +49,6 @@ export default function Conversation({
           <TranslationBlock
             result={m.result}
             raw={m.raw}
-            context={lastUserText}
             markedSet={markedSet}
             onToggleMark={onToggleMark}
           />

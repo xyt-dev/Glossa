@@ -73,7 +73,7 @@ export interface MarkInput {
   pos?: string | null;
   meaning?: string | null;
   native_usage?: string | null;
-  context?: string | null;
+  examples: Example[];
 }
 
 export interface VocabEntry {
@@ -83,6 +83,8 @@ export interface VocabEntry {
   pos?: string | null;
   meaning?: string | null;
   native_usage?: string | null;
+  examples: Example[];
+  /** legacy contexts from ≤v0.2; new word/usage entries expand examples instead */
   contexts: string[];
   first_marked: string;
   last_marked: string;
@@ -122,8 +124,8 @@ export interface Config {
 }
 
 export const THEMES = [
-  { id: "catppuccin-mocha", label: "Catppuccin Mocha（深）" },
-  { id: "catppuccin-latte", label: "Catppuccin Latte（浅）" },
-  { id: "gruvbox-dark", label: "Gruvbox Dark" },
   { id: "gruvbox-light", label: "Gruvbox Light" },
+  { id: "gruvbox-dark", label: "Gruvbox Dark" },
+  { id: "catppuccin-latte", label: "Catppuccin Light" },
+  { id: "catppuccin-mocha", label: "Catppuccin Dark" },
 ] as const;

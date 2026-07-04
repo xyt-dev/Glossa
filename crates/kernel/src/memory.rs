@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
+use crate::schema::Example;
 use serde::{Deserialize, Serialize};
 
 use crate::Result;
@@ -37,6 +38,9 @@ pub struct VocabEntry {
     #[serde(default)]
     pub native_usage: Option<String>,
     #[serde(default)]
+    pub examples: Vec<Example>,
+    /// Legacy v0.2 source sentences. New word/usage marks store examples instead.
+    #[serde(default)]
     pub contexts: Vec<String>,
     pub first_marked: String,
     pub last_marked: String,
@@ -55,9 +59,8 @@ pub struct MarkInput {
     pub meaning: Option<String>,
     #[serde(default)]
     pub native_usage: Option<String>,
-    /// Sentence the word was encountered in.
     #[serde(default)]
-    pub context: Option<String>,
+    pub examples: Vec<Example>,
 }
 
 #[derive(Clone)]
@@ -98,10 +101,8 @@ impl MemoryStore {
         let entry = match existing {
             Some(e) => {
                 e.last_marked = today;
-                if let Some(ctx) = input.context {
-                    if !e.contexts.contains(&ctx) {
-                        e.contexts.push(ctx);
-                    }
+                if !input.examples.is_empty() {
+                    e.examples = input.examples;
                 }
                 e.ipa = input.ipa.or(e.ipa.take());
                 e.pos = input.pos.or(e.pos.take());
@@ -117,7 +118,8 @@ impl MemoryStore {
                     pos: input.pos,
                     meaning: input.meaning,
                     native_usage: input.native_usage,
-                    contexts: input.context.into_iter().collect(),
+                    examples: input.examples,
+                    contexts: Vec::new(),
                     first_marked: today.clone(),
                     last_marked: today,
                 };
@@ -132,7 +134,8 @@ impl MemoryStore {
     /// Remove a mark entirely (UI toggle-off).
     pub fn unmark(&self, word: &str, kind: MarkKind) -> Result<()> {
         let mut mem = self.load()?;
-        mem.words.retain(|e| !(e.kind == kind && e.word.eq_ignore_ascii_case(word)));
+        mem.words
+            .retain(|e| !(e.kind == kind && e.word.eq_ignore_ascii_case(word)));
         self.save(&mem)
     }
 
@@ -184,7 +187,10 @@ mod tests {
             pos: Some("n.".into()),
             meaning: Some("测试".into()),
             native_usage: None,
-            context: Some("A test sentence.".into()),
+            examples: vec![Example {
+                en: "A test example.".into(),
+                zh: "一个测试例句。".into(),
+            }],
         }
     }
 
@@ -192,6 +198,9 @@ mod tests {
     fn mark_is_idempotent_for_existing_word() {
         let (_d, s) = store();
         s.mark(input("ubiquitous")).unwrap();
+        let mem = s.load().unwrap();
+        assert_eq!(mem.words[0].examples.len(), 1);
+        assert!(mem.words[0].contexts.is_empty());
         s.mark(input("Ubiquitous")).unwrap(); // case-insensitive merge
         assert_eq!(s.load().unwrap().words.len(), 1);
         s.unmark("ubiquitous", MarkKind::Word).unwrap();
@@ -208,14 +217,18 @@ mod tests {
             pos: None,
             meaning: Some("委员会一直在拖延。".into()),
             native_usage: None,
-            context: None,
+            examples: Vec::new(),
         })
         .unwrap();
         let mem = s.load().unwrap();
         assert_eq!(mem.words[0].kind, MarkKind::Sentence);
         let ctx = MemoryStore::prompt_context(&mem, 10);
         assert!(ctx.contains("sentence"));
-        s.unmark("The committee has been dragging its feet.", MarkKind::Sentence).unwrap();
+        s.unmark(
+            "The committee has been dragging its feet.",
+            MarkKind::Sentence,
+        )
+        .unwrap();
         assert!(s.load().unwrap().words.is_empty());
     }
 

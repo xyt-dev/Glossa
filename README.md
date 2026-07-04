@@ -109,7 +109,7 @@ API profiles、模型、effort、IELTS band 下限、默认模式、主题、界
 
 ```toml
 [ui]
-theme = "catppuccin-mocha"
+theme = "gruvbox-light"
 zoom = 1.0
 ```
 API key 直接写入 `api_key`，或留空并导出环境变量（默认 `DEEPSEEK_API_KEY`）。

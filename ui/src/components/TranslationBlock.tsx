@@ -6,7 +6,6 @@ import WordCard from "./WordCard";
 interface Props {
   result?: TranslationResult | null;
   raw?: string | null;
-  context: string | null;
   markedSet: Set<string>;
   onToggleMark: (input: MarkInput, marked: boolean) => void;
 }
@@ -14,7 +13,6 @@ interface Props {
 export default function TranslationBlock({
   result,
   raw,
-  context,
   markedSet,
   onToggleMark,
 }: Props) {
@@ -52,7 +50,6 @@ export default function TranslationBlock({
             <WordCard
               key={`${w.word}-${i}`}
               entry={w}
-              context={context}
               markedSet={markedSet}
               onToggleMark={onToggleMark}
             />
@@ -65,7 +62,6 @@ export default function TranslationBlock({
             <UsageCard
               key={`${u.usage}-${i}`}
               entry={u}
-              context={context}
               markedSet={markedSet}
               onToggleMark={onToggleMark}
             />

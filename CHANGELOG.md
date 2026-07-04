@@ -1,6 +1,6 @@
 # Change Log
 
-## Unreleased
+## v0.3.0 - 2026-07-04
 
 ### 重构：翻译结果 schema（逐句对照 + 独立 native 表达卡）
 
@@ -11,8 +11,8 @@
   每个 usage 带中文讲解 + 例句对照，卡片带 Native 徽标与「◇ 用法」标记按钮。
 - word 卡只保留「☆ 生词」按钮（词与用法彻底分离）；每个词要求 1~2 条例句对照。
 - `WordEntry.native_usage` 保留为 legacy 字段，仅用于渲染旧会话；新 prompt schema 不再包含。
-- 验证：`cargo test -p kernel`（27 passed，新增 sentences/usages 解析与空结果拒绝测试）、
-  注入新 schema 预览会话启动截图确认渲染。
+- 验证：`cargo test -p kernel`（29 passed，含 sentences/usages 解析与空结果拒绝测试）、
+  `npm --prefix ui run build`、`cargo check -p glossa`；另注入新 schema 预览会话启动截图确认渲染。
 
 ### 修复（v0.2.0 审查项）
 
@@ -34,8 +34,10 @@
 
 - 卡片体系：词卡「词」徽标 + 青色左线，Native 卡绿色，句卡主题色；词卡排在 Native 卡之前；
   句卡原句 20px 主色、译文 19px 次色。
-- 输入栏三件套（模式开关/输入框/发送）等高对齐，圆角统一 10px。
+- 输入栏三件套初始等高对齐，圆角统一 10px。
+- 输入栏按钮不再随多行 textarea 拉伸；模式切换和发送按钮初始高度与一行输入框对齐，多行输入时只保持底部对齐。
 - 侧边栏 18px 字号；生词本图标改为与 ⚙ 同风格的 Nerd Font 书本字形并等宽对齐。
+- 主题下拉顺序调整为 Gruvbox Light / Gruvbox Dark / Catppuccin Light / Catppuccin Dark；默认主题改为 Gruvbox Light，裸 `:root` 也映射到 Gruvbox Light 以避免启动前闪回旧暗色默认。
 - **自绘 Dropdown 组件**替换全部原生 `<select>`（WebKitGTK 弹出层无法用 CSS 主题化）：
   fixed 定位逃出弹窗滚动裁剪、最大高度 60vh、下方空间不足自动向上展开、选中项主题色高亮。
 - **主题化右键菜单**：全局屏蔽 webview 浏览器菜单（输入框保留粘贴菜单）；
@@ -45,6 +47,13 @@
   Esc 取消 / Enter 确认。
 - memory 上下文修复：usage 条目讲解存于 `native_usage`，序列化时回退填入 `meaning`，
   不再给模型发 null；system prompt 说明三类 kind 的含义。
+- 生词本展开内容从“原句 context”改为“词卡/用法卡例句”：
+  - 原设计会把用户标记单词或 native 用法时所在的整句 `context` 存进 memory，但对单词和固定表达来说，这个上下文常常只是本轮翻译原句，长期放在生词本里学习价值不稳定。
+  - `MarkInput` / `VocabEntry` 新增 `examples: Example[]`，标记 word 时保存 `WordEntry.examples`，标记 native usage 时保存 `UsageEntry.examples`。
+  - word / usage 标记不再传 `context`；新写入的 `VocabEntry.contexts` 固定为空，仅保留字段用于兼容 v0.2 旧数据反序列化。
+  - 生词本搜索范围移除 `contexts`，改为搜索 `examples.en` + `examples.zh`；搜索提示改为“模糊搜索单词、释义、native 用法或例句…”。
+  - 生词本列表不再渲染 `.vocab-context` / `.vocab-contexts-open`；展开入口改为 `展开例句（N）`，展开后显示例句标题、英文例句与中文翻译。
+  - 这样 word / usage 的长期记忆内容从“出现过的原句”变为“可复习的教学例句”，与 v0.3 的词卡和独立 Native 用法卡语义一致。
 
 ## v0.2.0 - 2026-07-03
 

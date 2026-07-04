@@ -14,13 +14,22 @@ pub struct ChatMessage {
 
 impl ChatMessage {
     pub fn system(content: impl Into<String>) -> Self {
-        Self { role: "system".into(), content: content.into() }
+        Self {
+            role: "system".into(),
+            content: content.into(),
+        }
     }
     pub fn user(content: impl Into<String>) -> Self {
-        Self { role: "user".into(), content: content.into() }
+        Self {
+            role: "user".into(),
+            content: content.into(),
+        }
     }
     pub fn assistant(content: impl Into<String>) -> Self {
-        Self { role: "assistant".into(), content: content.into() }
+        Self {
+            role: "assistant".into(),
+            content: content.into(),
+        }
     }
 }
 
@@ -39,21 +48,34 @@ impl Default for Client {
 impl Client {
     /// Default client; honors http(s)_proxy / no_proxy environment variables.
     pub fn new() -> Self {
-        Self { http: reqwest::Client::new() }
+        Self {
+            http: reqwest::Client::new(),
+        }
     }
 
     /// Client that bypasses any system proxy (tests against local mock servers).
     pub fn direct() -> Self {
         Self {
-            http: reqwest::Client::builder().no_proxy().build().expect("reqwest client"),
+            http: reqwest::Client::builder()
+                .no_proxy()
+                .build()
+                .expect("reqwest client"),
         }
     }
 
     fn endpoint(profile: &Profile) -> String {
-        format!("{}/chat/completions", profile.base_url.trim_end_matches('/'))
+        format!(
+            "{}/chat/completions",
+            profile.base_url.trim_end_matches('/')
+        )
     }
 
-    pub(crate) fn build_body(profile: &Profile, messages: &[ChatMessage], stream: bool, json_mode: bool) -> Value {
+    pub(crate) fn build_body(
+        profile: &Profile,
+        messages: &[ChatMessage],
+        stream: bool,
+        json_mode: bool,
+    ) -> Value {
         let mut body = json!({
             "model": profile.model,
             "messages": messages,
@@ -70,11 +92,16 @@ impl Client {
             None => profile.base_url.contains("deepseek"),
         };
         if is_deepseek {
-            body["thinking"] = json!({"type": if profile.effort.is_some() { "enabled" } else { "disabled" }});
+            body["thinking"] =
+                json!({"type": if profile.effort.is_some() { "enabled" } else { "disabled" }});
         }
         if let Some(e) = &profile.effort {
             // OpenAI and most compatible APIs don't accept "xhigh" — normalise it.
-            let level = if !is_deepseek && e == "xhigh" { "high" } else { e.as_str() };
+            let level = if !is_deepseek && e == "xhigh" {
+                "high"
+            } else {
+                e.as_str()
+            };
             body["reasoning_effort"] = json!(level);
         }
         if json_mode {
@@ -130,24 +157,27 @@ impl Client {
     ) -> Result<impl Stream<Item = Result<String>> + Send + Unpin> {
         let body = Self::build_body(profile, messages, true, json_mode);
         let resp = self.post(profile, &body).await?;
-        let stream = resp.bytes_stream().eventsource().filter_map(|ev| async move {
-            match ev {
-                Ok(ev) => {
-                    if ev.data.trim() == "[DONE]" {
-                        return None;
+        let stream = resp
+            .bytes_stream()
+            .eventsource()
+            .filter_map(|ev| async move {
+                match ev {
+                    Ok(ev) => {
+                        if ev.data.trim() == "[DONE]" {
+                            return None;
+                        }
+                        match serde_json::from_str::<Value>(&ev.data) {
+                            Ok(v) => v["choices"][0]["delta"]["content"]
+                                .as_str()
+                                .filter(|s| !s.is_empty())
+                                .map(|s| Ok(s.to_owned())),
+                            // Tolerate non-JSON keep-alives some providers send.
+                            Err(_) => None,
+                        }
                     }
-                    match serde_json::from_str::<Value>(&ev.data) {
-                        Ok(v) => v["choices"][0]["delta"]["content"]
-                            .as_str()
-                            .filter(|s| !s.is_empty())
-                            .map(|s| Ok(s.to_owned())),
-                        // Tolerate non-JSON keep-alives some providers send.
-                        Err(_) => None,
-                    }
+                    Err(e) => Some(Err(Error::Stream(e.to_string()))),
                 }
-                Err(e) => Some(Err(Error::Stream(e.to_string()))),
-            }
-        });
+            });
         Ok(Box::pin(stream))
     }
 }

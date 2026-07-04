@@ -61,9 +61,12 @@ function entryScore(entry: VocabEntry, query: string): number {
   const usageScore = fuzzyScoreText(entry.native_usage, query) * 2;
   const ipaScore = fuzzyScoreText(entry.ipa, query);
   const posScore = fuzzyScoreText(entry.pos, query);
-  const contextScore = Math.max(0, ...entry.contexts.map((ctx) => fuzzyScoreText(ctx, query)));
+  const exampleScore = Math.max(
+    0,
+    ...entry.examples.map((ex) => fuzzyScoreText(`${ex.en} ${ex.zh}`, query)),
+  );
 
-  return Math.max(wordScore, meaningScore, usageScore, ipaScore, posScore, contextScore);
+  return Math.max(wordScore, meaningScore, usageScore, ipaScore, posScore, exampleScore);
 }
 
 function formatDate(iso: string): string {
@@ -76,7 +79,16 @@ function formatDate(iso: string): string {
 export default function VocabBook({ memory, onClose, onRemove }: Props) {
   const [query, setQuery] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("added");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const normalizedQuery = normalize(query);
+
+  const toggleExpanded = (key: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   const entries = useMemo<ScoredEntry[]>(() => {
     const base = memory.words.map((entry, index) => ({
@@ -86,9 +98,10 @@ export default function VocabBook({ memory, onClose, onRemove }: Props) {
     }));
 
     if (normalizedQuery) {
+      // tie-break: newest first, matching the default list order
       return base
         .filter((item) => item.score > 0)
-        .sort((a, b) => b.score - a.score || a.index - b.index);
+        .sort((a, b) => b.score - a.score || b.index - a.index);
     }
 
     if (sortMode === "alpha") {
@@ -96,11 +109,12 @@ export default function VocabBook({ memory, onClose, onRemove }: Props) {
         (a, b) =>
           a.entry.word.localeCompare(b.entry.word, undefined, { sensitivity: "base" }) ||
           a.entry.kind.localeCompare(b.entry.kind) ||
-          a.index - b.index,
+          b.index - a.index,
       );
     }
 
-    return base;
+    // 添加顺序：最新标记的在最上方
+    return [...base].reverse();
   }, [memory.words, normalizedQuery, sortMode]);
 
   return (
@@ -123,14 +137,13 @@ export default function VocabBook({ memory, onClose, onRemove }: Props) {
             className="vocab-search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="模糊搜索单词、释义、native 用法或上下文…"
+            placeholder="模糊搜索单词、释义、native 用法或例句…"
             autoFocus
           />
           <Dropdown
             className="vocab-sort"
             value={sortMode}
             disabled={Boolean(normalizedQuery)}
-            title={normalizedQuery ? "搜索时按匹配度排序" : "排序方式"}
             options={[
               { value: "added", label: "添加顺序" },
               { value: "alpha", label: "字母顺序" },
@@ -155,13 +168,12 @@ export default function VocabBook({ memory, onClose, onRemove }: Props) {
                     {entry.pos && <span className="pos">{entry.pos}</span>}
                   </div>
                   <div className="vocab-meta">
-                    <span className={`vocab-kind ${entry.kind}`}>
+                    <span className={`vocab-kind kind-${entry.kind}`}>
                       {entry.kind === "word" ? "生词" : entry.kind === "usage" ? "用法" : "句子"}
                     </span>
                     <span>{formatDate(entry.first_marked)}</span>
                     <button
                       className="vocab-remove"
-                      title="从生词本删除"
                       onClick={() => onRemove(entry.word, entry.kind)}
                     >
                       ×
@@ -171,11 +183,33 @@ export default function VocabBook({ memory, onClose, onRemove }: Props) {
 
                 {entry.meaning && <div className="vocab-meaning">{entry.meaning}</div>}
                 {entry.native_usage && <div className="vocab-native">{entry.native_usage}</div>}
-                {entry.contexts.length > 0 && (
-                  <div className="vocab-context" title={entry.contexts[entry.contexts.length - 1]}>
-                    {entry.contexts[entry.contexts.length - 1]}
-                  </div>
-                )}
+                {entry.examples.length > 0 &&
+                  (() => {
+                    const key = `${entry.kind}:${entry.word.toLowerCase()}`;
+                    const open = expanded.has(key);
+                    return open ? (
+                      <div
+                        className="vocab-examples-open"
+                        onClick={() => toggleExpanded(key)}
+                      >
+                        <div className="vocab-examples-title">
+                          <span className="ctx-chevron">▾</span>
+                          例句
+                        </div>
+                        {entry.examples.map((ex, i) => (
+                          <div key={i} className="vocab-example-item">
+                            <span className="vocab-example-en">{ex.en}</span>
+                            <span className="vocab-example-zh">{ex.zh}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="vocab-examples-toggle" onClick={() => toggleExpanded(key)}>
+                        <span className="ctx-chevron">▸</span>
+                        <span className="ctx-text">展开例句（{entry.examples.length}）</span>
+                      </div>
+                    );
+                  })()}
               </article>
             ))
           )}

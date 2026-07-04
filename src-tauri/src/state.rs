@@ -16,7 +16,11 @@ impl AppState {
     pub fn init() -> kernel::Result<Self> {
         let config_path = config::default_config_path();
         let config = Config::load_or_init(&config_path)?;
-        Ok(Self { config_path, config: Mutex::new(config), client: Client::new() })
+        Ok(Self {
+            config_path,
+            config: Mutex::new(config),
+            client: Client::new(),
+        })
     }
 
     pub fn memory_store(config: &Config) -> MemoryStore {

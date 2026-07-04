@@ -46,7 +46,9 @@ pub async fn rename_session(
     title: String,
 ) -> CmdResult<Session> {
     let config = state.config.lock().await.clone();
-    AppState::session_store(&config).rename(&id, &title).map_err(err)
+    AppState::session_store(&config)
+        .rename(&id, &title)
+        .map_err(err)
 }
 
 /// One agent turn; streams SendEvent to the frontend over `on_event`.
@@ -62,10 +64,17 @@ pub async fn send_message(
     let config = state.config.lock().await.clone();
     let memory = AppState::memory_store(&config);
     let store = AppState::session_store(&config);
-    let mut stream =
-        agent::send(state.client.clone(), config, memory, store, session_id, text, mode)
-            .await
-            .map_err(err)?;
+    let mut stream = agent::send(
+        state.client.clone(),
+        config,
+        memory,
+        store,
+        session_id,
+        text,
+        mode,
+    )
+    .await
+    .map_err(err)?;
     while let Some(ev) = stream.next().await {
         // frontend gone — nothing left to notify, agent still persists the turn
         if on_event.send(ev).is_err() {
@@ -88,7 +97,9 @@ pub async fn unmark_word(
     kind: MarkKind,
 ) -> CmdResult<()> {
     let config = state.config.lock().await.clone();
-    AppState::memory_store(&config).unmark(&word, kind).map_err(err)
+    AppState::memory_store(&config)
+        .unmark(&word, kind)
+        .map_err(err)
 }
 
 #[tauri::command]

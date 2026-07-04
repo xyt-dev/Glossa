@@ -1,6 +1,5 @@
 /* ---- 主题调色板（官方色值 + 组件语义映射）----------------------------- */
-/* Catppuccin Mocha — https://catppuccin.com/palette (default) */
-:root,
+/* Catppuccin Mocha — https://catppuccin.com/palette */
 :root[data-theme="catppuccin-mocha"] {
   --bg: #1e1e2e;            /* base */
   --bg-panel: #181825;      /* mantle */
@@ -78,7 +77,8 @@
   --shadow: rgba(29, 32, 33, 0.55);
 }
 
-/* Gruvbox Light (morhetz) */
+/* Gruvbox Light (morhetz) — default */
+:root,
 :root[data-theme="gruvbox-light"] {
   --bg: #fbf1c7;            /* light0 */
   --bg-panel: #f2e5bc;      /* light0_soft */

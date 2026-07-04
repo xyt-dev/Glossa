@@ -12,8 +12,8 @@ pub const DEFAULT_CONFIG_TOML: &str = r#"# glossa 配置文件
 active_profile = "deepseek"
 
 [ui]
-# gruvbox-dark | gruvbox-light | catppuccin-mocha | catppuccin-latte
-theme = "catppuccin-mocha"
+# gruvbox-light | gruvbox-dark | catppuccin-latte | catppuccin-mocha
+theme = "gruvbox-light"
 zoom = 1.0                            # 界面缩放（1.0 = 100%，建议 0.8-1.8）
 
 [memory]
@@ -85,7 +85,10 @@ pub struct UiConfig {
 
 impl Default for UiConfig {
     fn default() -> Self {
-        Self { theme: "catppuccin-mocha".into(), zoom: 1.0 }
+        Self {
+            theme: "gruvbox-light".into(),
+            zoom: 1.0,
+        }
     }
 }
 
@@ -100,7 +103,11 @@ pub struct MemoryConfig {
 
 impl Default for MemoryConfig {
     fn default() -> Self {
-        Self { path: None, min_ielts_band: 7.0, max_context_words: 60 }
+        Self {
+            path: None,
+            min_ielts_band: 7.0,
+            max_context_words: 60,
+        }
     }
 }
 
@@ -113,7 +120,10 @@ pub struct SessionConfig {
 
 impl Default for SessionConfig {
     fn default() -> Self {
-        Self { default_mode: Mode::Translate, max_context_messages: 40 }
+        Self {
+            default_mode: Mode::Translate,
+            max_context_messages: 40,
+        }
     }
 }
 
@@ -165,12 +175,16 @@ fn project_dirs() -> Option<directories::ProjectDirs> {
 
 /// Platform config dir, e.g. `~/.config/glossa` on Linux.
 pub fn config_dir() -> PathBuf {
-    project_dirs().map(|d| d.config_dir().to_path_buf()).unwrap_or_else(|| PathBuf::from("."))
+    project_dirs()
+        .map(|d| d.config_dir().to_path_buf())
+        .unwrap_or_else(|| PathBuf::from("."))
 }
 
 /// Platform data dir, e.g. `~/.local/share/glossa` on Linux.
 pub fn data_dir() -> PathBuf {
-    project_dirs().map(|d| d.data_dir().to_path_buf()).unwrap_or_else(|| PathBuf::from("."))
+    project_dirs()
+        .map(|d| d.data_dir().to_path_buf())
+        .unwrap_or_else(|| PathBuf::from("."))
 }
 
 pub fn default_config_path() -> PathBuf {
@@ -236,7 +250,10 @@ impl Config {
     }
 
     pub fn vocab_path(&self) -> PathBuf {
-        self.memory.path.clone().unwrap_or_else(|| data_dir().join("vocab.json"))
+        self.memory
+            .path
+            .clone()
+            .unwrap_or_else(|| data_dir().join("vocab.json"))
     }
 
     pub fn sessions_dir(&self) -> PathBuf {
@@ -256,9 +273,12 @@ mod tests {
         let p = cfg.active_profile().unwrap();
         assert_eq!(p.model, "deepseek-v4-pro-max");
         assert_eq!(p.chat_effort.as_deref(), Some("xhigh"));
-        assert!(p.translate_effort.is_none(), "translate should default to no thinking");
+        assert!(
+            p.translate_effort.is_none(),
+            "translate should default to no thinking"
+        );
         assert_eq!(cfg.session.default_mode, Mode::Translate);
-        assert_eq!(cfg.ui.theme, "catppuccin-mocha");
+        assert_eq!(cfg.ui.theme, "gruvbox-light");
         assert_eq!(cfg.ui.zoom, 1.0);
     }
 
@@ -310,7 +330,11 @@ effort = "high"
 
     #[test]
     fn api_key_resolution_prefers_literal_then_env() {
-        let mut p = Profile { api_key: "sk-lit".into(), api_key_env: "NOPE_UNSET".into(), ..Default::default() };
+        let mut p = Profile {
+            api_key: "sk-lit".into(),
+            api_key_env: "NOPE_UNSET".into(),
+            ..Default::default()
+        };
         assert_eq!(p.resolve_api_key().unwrap(), "sk-lit");
         p.api_key.clear();
         assert!(p.resolve_api_key().is_err());

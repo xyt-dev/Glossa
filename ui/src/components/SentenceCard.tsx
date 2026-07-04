@@ -17,7 +17,7 @@ export default function SentenceCard({ pair, markedSet, onToggleMark }: Props) {
     pos: null,
     meaning: pair.dst,
     native_usage: null,
-    context: null,
+    examples: [],
   };
 
   return (
@@ -32,7 +32,6 @@ export default function SentenceCard({ pair, markedSet, onToggleMark }: Props) {
         </div>
         <button
           className={`mark-btn${marked ? " on" : ""}`}
-          title={marked ? "取消收藏句子" : "收藏句子到生词本"}
           onClick={() => onToggleMark(input, marked)}
         >
           {marked ? "★ 句子" : "☆ 句子"}

@@ -93,7 +93,6 @@ export default function Sidebar({
                 title: s.title,
               });
             }}
-            title={s.title}
           >
             {editingId === s.id ? (
               <input
