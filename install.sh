@@ -36,17 +36,34 @@ case "$OS" in
     [ -n "$url" ] || url=$(printf '%s\n' "$urls" | grep -E '\.AppImage$' | head -1 || true)
     [ -n "$url" ] || die "Release 中没有 AppImage 资产"
 
-    dir="${GLOSSA_INSTALL_DIR:-$HOME/.local/bin}"
-    mkdir -p "$dir"
+    bin_dir="${GLOSSA_INSTALL_DIR:-$HOME/.local/bin}"
+    app_dir="$HOME/.local/lib/glossa"
+    app="$app_dir/glossa.AppImage"
+    bin="$bin_dir/glossa"
+    mkdir -p "$bin_dir" "$app_dir"
     say "下载 $(basename "$url") ..."
-    curl -fL --progress-bar -o "$dir/glossa.download" "$url"
-    chmod +x "$dir/glossa.download"
-    # 原子替换：正在运行的旧版本不受影响，下次启动即新版
-    mv "$dir/glossa.download" "$dir/glossa"
-    say "已安装/更新: $dir/glossa（glossa = 桌面端，glossa web = Web 服务）"
+    curl -fL --progress-bar -o "$app.download" "$url"
+    chmod +x "$app.download"
+    # 原子替换：正在运行的旧版本不受影响，下次启动即新版。
+    mv "$app.download" "$app"
+    # 终端入口用 wrapper，而不是直接把 AppImage 命名为 glossa：
+    # 1) ~/.local/bin 里只放命令入口，真实 AppImage 放到 ~/.local/lib/glossa；
+    # 2) AppImage 内的 WebKitWebProcess 在部分 Linux 终端环境下会 EGL 崩溃，
+    #    wrapper 只对 AppImage 启动补环境，不污染 cargo install / 开发运行。
+    cat > "$bin.download" <<'EOF'
+#!/bin/sh
+set -eu
+app="${GLOSSA_APPIMAGE:-$HOME/.local/lib/glossa/glossa.AppImage}"
+export WEBKIT_DISABLE_DMABUF_RENDERER="${WEBKIT_DISABLE_DMABUF_RENDERER:-1}"
+exec "$app" "$@"
+EOF
+    chmod +x "$bin.download"
+    mv "$bin.download" "$bin"
+    say "已安装/更新: $app"
+    say "命令入口: $bin（glossa = 桌面端，glossa web = Web 服务）"
     case ":$PATH:" in
-      *":$dir:"*) ;;
-      *) say "提示: 请把 $dir 加入 PATH" ;;
+      *":$bin_dir:"*) ;;
+      *) say "提示: 请把 $bin_dir 加入 PATH" ;;
     esac
     ;;
 

@@ -31,24 +31,7 @@ fn exempt_localhost_from_proxy() {
     std::env::set_var("NO_PROXY", &merged);
 }
 
-/// Recent WebKitGTK releases use the DMA-BUF renderer by default. On some
-/// Linux GPU / compositor combinations it aborts during EGL initialization with
-/// "Could not create default EGL display: EGL_BAD_PARAMETER" before Tauri can
-/// show the window. Disable that renderer unless the user explicitly opted into
-/// a different value.
-#[cfg(target_os = "linux")]
-fn stabilize_webkitgtk_graphics() {
-    if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
-        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
-    }
-}
-
-#[cfg(not(target_os = "linux"))]
-fn stabilize_webkitgtk_graphics() {}
-
 pub fn run() {
-    stabilize_webkitgtk_graphics();
-
     #[cfg(all(debug_assertions, target_os = "linux"))]
     exempt_localhost_from_proxy();
 
