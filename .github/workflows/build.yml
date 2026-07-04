@@ -19,6 +19,10 @@ jobs:
 
   bundle:
     needs: test
+    # 创建 Release 需要写权限；否则 tauri-action 报
+    # "Resource not accessible by integration"
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
