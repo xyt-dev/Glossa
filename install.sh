@@ -12,13 +12,45 @@ API="https://api.github.com/repos/$REPO/releases/latest"
 say() { printf '%s\n' "$*"; }
 die() { printf '错误: %s\n' "$*" >&2; exit 1; }
 
-# 生成 .desktop 桌面项 + 下载图标，让 Glossa 进应用菜单并显示图标（Linux）
+# 生成 .desktop 桌面项 + 下载图标，让 Glossa 进应用菜单并显示图标（Linux）。
+# 关键：StartupWMClass 必须等于运行时窗口 app_id（Tauri 在 Linux 用二进制名
+# "glossa"，小写），否则 Wayland/KDE 匹配不到 .desktop，任务栏用默认图标。
 install_desktop() { # $1 = 可执行入口绝对路径
   apps="$HOME/.local/share/applications"
-  icons="$HOME/.local/share/icons/hicolor/scalable/apps"
-  mkdir -p "$apps" "$icons"
-  curl -fsSL "https://raw.githubusercontent.com/$REPO/main/ui/public/icon.svg" \
-    -o "$icons/glossa.svg" 2>/dev/null || true
+  hicolor="$HOME/.local/share/icons/hicolor"
+  scalable="$hicolor/scalable/apps"
+  png256="$hicolor/256x256/apps"
+  mkdir -p "$apps" "$scalable" "$png256"
+  # 用户级 hicolor 缺 index.theme 时 gtk-update-icon-cache 建不了缓存，补一个
+  if [ ! -f "$hicolor/index.theme" ]; then
+    cat > "$hicolor/index.theme" <<'THEME'
+[Icon Theme]
+Name=Hicolor
+Comment=Fallback icon theme
+Directories=scalable/apps,256x256/apps,128x128/apps
+
+[scalable/apps]
+Context=Applications
+Size=256
+MinSize=8
+MaxSize=512
+Type=Scalable
+
+[256x256/apps]
+Context=Applications
+Size=256
+Type=Fixed
+
+[128x128/apps]
+Context=Applications
+Size=128
+Type=Fixed
+THEME
+  fi
+  base="https://raw.githubusercontent.com/$REPO/main"
+  # SVG（矢量）+ PNG（部分环境对 SVG 应用图标渲染不稳，PNG 兜底）
+  curl -fsSL "$base/ui/public/icon.svg" -o "$scalable/glossa.svg" 2>/dev/null || true
+  curl -fsSL "$base/src-tauri/icons/128x128@2x.png" -o "$png256/glossa.png" 2>/dev/null || true
   cat > "$apps/glossa.desktop" <<DESKTOP
 [Desktop Entry]
 Type=Application
@@ -28,10 +60,11 @@ Exec=$1
 Icon=glossa
 Terminal=false
 Categories=Education;Utility;
-StartupWMClass=Glossa
+StartupWMClass=glossa
 DESKTOP
   update-desktop-database "$apps" 2>/dev/null || true
   gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" 2>/dev/null || true
+  kbuildsycoca6 2>/dev/null || true # KDE：刷新窗口→.desktop 关联缓存
   say "已注册应用菜单与图标（glossa.desktop）"
 }
 
