@@ -1,5 +1,5 @@
 import type { MarkInput, TranslationResult } from "../types";
-import SentenceCard from "./SentenceCard";
+import SentenceView from "./SentenceView";
 import UsageCard from "./UsageCard";
 import WordCard from "./WordCard";
 
@@ -30,16 +30,11 @@ export default function TranslationBlock({
   return (
     <div className="translation-block">
       {pairs.length > 0 ? (
-        <div className="word-cards sentence-cards">
-          {pairs.map((p, i) => (
-            <SentenceCard
-              key={`${p.src}-${i}`}
-              pair={p}
-              markedSet={markedSet}
-              onToggleMark={onToggleMark}
-            />
-          ))}
-        </div>
+        <SentenceView
+          sentences={pairs}
+          markedSet={markedSet}
+          onToggleMark={onToggleMark}
+        />
       ) : (
         // legacy results (≤v0.2) have no sentence pairs
         <div className="translation-text">{result.translation}</div>

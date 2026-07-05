@@ -12,6 +12,29 @@ API="https://api.github.com/repos/$REPO/releases/latest"
 say() { printf '%s\n' "$*"; }
 die() { printf '错误: %s\n' "$*" >&2; exit 1; }
 
+# 生成 .desktop 桌面项 + 下载图标，让 Glossa 进应用菜单并显示图标（Linux）
+install_desktop() { # $1 = 可执行入口绝对路径
+  apps="$HOME/.local/share/applications"
+  icons="$HOME/.local/share/icons/hicolor/scalable/apps"
+  mkdir -p "$apps" "$icons"
+  curl -fsSL "https://raw.githubusercontent.com/$REPO/main/ui/public/icon.svg" \
+    -o "$icons/glossa.svg" 2>/dev/null || true
+  cat > "$apps/glossa.desktop" <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Glossa
+Comment=翻译 + 英语学习私教
+Exec=$1
+Icon=glossa
+Terminal=false
+Categories=Education;Utility;
+StartupWMClass=Glossa
+DESKTOP
+  update-desktop-database "$apps" 2>/dev/null || true
+  gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" 2>/dev/null || true
+  say "已注册应用菜单与图标（glossa.desktop）"
+}
+
 command -v curl >/dev/null 2>&1 || die "需要 curl"
 
 OS=$(uname -s)
@@ -97,6 +120,7 @@ EOF
       say "已安装/更新 AppImage fallback: $app"
       say "命令入口: $bin（glossa = 桌面端，glossa web = Web 服务）"
     fi
+    install_desktop "$bin"
     case ":$PATH:" in
       *":$bin_dir:"*) ;;
       *) say "提示: 请把 $bin_dir 加入 PATH" ;;

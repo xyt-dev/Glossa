@@ -1,5 +1,43 @@
 # Change Log
 
+## v0.4.4 - 2026-07-06
+
+### 句子翻译：浮动窗口交互
+
+- 顶部句子区不再平铺译文卡，而是渲染**原文分句**：每句 hover 高亮（动态过渡），
+  点击某句在其位置弹出**浮动窗口**显示该句译文，并可在窗口内收藏（kind = sentence）。
+- 单词卡、native 用法卡保持不变，仍在句子区下方；句子收藏功能保留。
+- 浮层弹性宽度：默认较宽，随内容增长到 560px 上限后换行；内容超高时窗口内滚动，
+  收藏按钮固定在底部始终可见。
+
+### 通用 Popover 组件（可复用锚定浮层）
+
+- 抽出 `ui/src/components/Popover.tsx`，把浮层定位/关闭逻辑组件化，按协议接收内容：
+  调用方给出 `anchor`（触发点位置）+ `children`（可滚动主体）+ 可选 `footer`（固定底部）。
+- **智能定位**：默认在锚点下方弹出，下方空间不足且上方更宽敞时**自动向上翻转**（箭头随之翻到底部）；
+  水平方向夹住不出屏；箭头始终指向锚点；点击外部 / Esc / 滚动 / 缩放自动关闭。
+  兼容 web 端 CSS zoom（坐标按 uiScale 归一化）。
+- 句子翻译浮窗即基于它实现；见下方 Roadmap，未来阅读模式的点击划词翻译将复用同一套。
+
+### 发布 / 安装
+
+- **Linux 分发 native 二进制**：CI 额外打包裸二进制 tarball 上传 Release，install.sh 优先安装
+  native 版（用系统 webkit2gtk），规避 AppImage 自带图形库在 Wayland/新 GPU 上的
+  `EGL_BAD_PARAMETER` 崩溃；仅在缺失时 fallback AppImage（wrapper 设 WEBKIT 环境变量兜底），
+  支持 `GLOSSA_FORCE_APPIMAGE=1` 强制。
+- **Linux 桌面集成**：install.sh 安装后生成 `~/.local/share/applications/glossa.desktop`
+  并从仓库下载 `icon.svg` 到图标目录 —— Glossa 进应用菜单并显示图标（此前只丢了个可执行文件，
+  无 .desktop 故无图标）。
+- **macOS 安装**改用 `hdiutil -mountpoint` 显式挂载点，根治 `/Volumes` 重复挂载导致的
+  `cp: N/Glossa.app: No such file or directory`，并消除挂载 deprecation 提示。
+
+### Roadmap / TODO
+
+- **书籍翻译阅读学习**：计划接入 epub / 网页正文提取脚本，把整本书/文章导入为可阅读文本；
+  阅读时点击句子或划词，用**同一套 `Popover` 组件**就地弹出翻译与学习卡片（词卡 / native 用法 /
+  收藏），把"翻译器"扩展成"沉浸式阅读 + 生词沉淀"。Popover 的协议化设计（anchor + children + footer）
+  正是为此预留的复用点。
+
 ## v0.4.2 - 2026-07-04
 
 ### 移动端修复

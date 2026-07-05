@@ -597,39 +597,124 @@ input[type="number"]::-webkit-outer-spin-button {
   word-break: break-word;
 }
 
-/* 逐句对照卡片 */
-.sentence-card {
-  border-left-color: var(--accent);
+/* 顶部句子区：原文按句，hover 高亮，点击弹浮动窗口看译文 */
+.sentence-view {
+  font-size: 20px;
+  line-height: 1.95;
+  color: var(--fg);
+  word-break: break-word;
 }
 
-.sent-row {
+.sentence-chip {
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 1px 5px;
+  margin: 0 1px;
+  border-bottom: 2px solid transparent;
+  /* 跨行时每段都保留圆角 */
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.sentence-chip:hover {
+  background: var(--accent-soft);
+  border-bottom-color: var(--accent);
+}
+
+.sentence-chip.active {
+  background: var(--accent);
+  border-bottom-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+/* ---- 通用锚定浮层 Popover（句子翻译、未来阅读划词翻译复用）------------ */
+.popover {
+  position: fixed;
+  z-index: 70;
+  transform: translateX(-50%);
+  min-width: 320px;
+  /* max-width 由组件按视口传入 style；这里给回退上限 */
+  max-width: min(560px, 92vw);
+  max-height: min(58vh, 460px);
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  flex-direction: column;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 14px 36px var(--shadow);
+  animation: pop-in 0.14s ease;
 }
 
-.sent-text {
-  flex: 1;
-  min-width: 0;
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
-.sent-src {
+/* 主体：超高时滚动 */
+.popover-body {
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+}
+
+/* footer：固定底部、始终可见（如收藏按钮） */
+.popover-footer {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* 箭头：默认指上（浮层在锚点下方）；.up 时翻到底部指下 */
+.popover-arrow {
+  position: absolute;
+  top: -6px;
+  width: 12px;
+  height: 12px;
+  transform: translateX(-50%) rotate(45deg);
+  background: var(--bg);
+  border-left: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+}
+
+.popover.up .popover-arrow {
+  top: auto;
+  bottom: -6px;
+  border-left: none;
+  border-top: none;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.pop-src {
+  font-size: 16px;
+  color: var(--fg-muted);
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.pop-dst {
   font-size: 20px;
   color: var(--fg);
   line-height: 1.7;
   word-break: break-word;
 }
 
-.sent-dst {
-  margin-top: 4px;
-  font-size: 19px;
-  color: var(--fg-muted);
-  line-height: 1.6;
-  word-break: break-word;
-}
-
-.sent-row .mark-btn {
-  flex-shrink: 0;
+.pop-mark {
+  align-self: flex-start;
+  margin-top: 2px;
 }
 
 .word-cards {
