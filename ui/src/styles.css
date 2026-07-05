@@ -660,9 +660,10 @@ input[type="number"]::-webkit-outer-spin-button {
   }
 }
 
-/* 主体：超高时滚动 */
+/* 主体：超高时滚动；overscroll-behavior 阻止滚到边界后把滚动传给外部对话流 */
 .popover-body {
   overflow-y: auto;
+  overscroll-behavior: contain;
   min-height: 0;
   display: flex;
   flex-direction: column;

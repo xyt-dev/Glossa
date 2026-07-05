@@ -59,17 +59,23 @@ export default function Popover({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
+    // 只在“外部”滚动时关闭（锚点随之移走）；浮层内部滚动不能关，否则滚不动
+    const onScroll = (e: Event) => {
+      const t = e.target as Node | null;
+      if (t && ref.current?.contains(t)) return;
+      onClose();
+    };
     window.addEventListener("mousedown", onClose);
     window.addEventListener("touchstart", onClose);
     window.addEventListener("keydown", onKey);
     window.addEventListener("resize", onClose);
-    window.addEventListener("scroll", onClose, true);
+    window.addEventListener("scroll", onScroll, true);
     return () => {
       window.removeEventListener("mousedown", onClose);
       window.removeEventListener("touchstart", onClose);
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", onClose);
-      window.removeEventListener("scroll", onClose, true);
+      window.removeEventListener("scroll", onScroll, true);
     };
   }, [onClose]);
 
