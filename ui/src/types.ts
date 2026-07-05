@@ -119,6 +119,7 @@ export interface Config {
   session: {
     default_mode: Mode;
     max_context_messages: number;
+    translate_context_messages: number;
   };
   web: {
     enabled: boolean;

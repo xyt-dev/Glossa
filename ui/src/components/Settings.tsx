@@ -144,13 +144,27 @@ export default function Settings({
               />
             </label>
             <label>
-              上下文窗口（条）
+              聊天上下文窗口（条）
               <input
                 type="number"
                 min={2}
                 value={draft.session.max_context_messages}
                 onChange={(e) =>
                   patch((d) => (d.session.max_context_messages = Number(e.target.value) || 2))
+                }
+              />
+            </label>
+            <label>
+              翻译上下文窗口（条）
+              <input
+                type="number"
+                min={0}
+                value={draft.session.translate_context_messages}
+                onChange={(e) =>
+                  patch(
+                    (d) =>
+                      (d.session.translate_context_messages = Number(e.target.value) || 0),
+                  )
                 }
               />
             </label>

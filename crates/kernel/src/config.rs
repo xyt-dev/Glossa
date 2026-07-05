@@ -23,8 +23,9 @@ min_ielts_band = 7.0     # 模型选词讲解的 IELTS band 下限
 max_context_words = 60   # 喂给模型的最近生词条数上限
 
 [session]
-default_mode = "translate"  # translate | chat
-max_context_messages = 40   # 发给 API 的历史消息滑动窗口
+default_mode = "translate"        # translate | chat
+max_context_messages = 40         # 聊天模式的历史窗口（条）
+translate_context_messages = 12   # 翻译模式的历史窗口（条，只回放翻译回合，宜小提速）
 
 [web]
 enabled = false   # 桌面端启动时是否同时开启 Web 服务（`glossa web` 命令不受此影响）
@@ -121,7 +122,11 @@ impl Default for MemoryConfig {
 #[serde(default)]
 pub struct SessionConfig {
     pub default_mode: Mode,
+    /// 聊天模式的历史滑动窗口（条）。
     pub max_context_messages: usize,
+    /// 翻译模式的历史窗口（条，仅回放翻译回合）。翻译只需最近几轮保证术语/风格
+    /// 一致，窗口宜小以提速降本。
+    pub translate_context_messages: usize,
 }
 
 impl Default for SessionConfig {
@@ -129,6 +134,7 @@ impl Default for SessionConfig {
         Self {
             default_mode: Mode::Translate,
             max_context_messages: 40,
+            translate_context_messages: 12,
         }
     }
 }

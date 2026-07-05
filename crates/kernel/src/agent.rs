@@ -40,20 +40,54 @@ fn now() -> String {
     chrono::Utc::now().to_rfc3339()
 }
 
-/// Replay persisted history as API messages (sliding window).
-/// Translate replies are replayed as their raw JSON so later chat turns can
-/// reference earlier translations and word cards.
-fn history_to_api(messages: &[Message], window: usize) -> Vec<ChatMessage> {
-    let start = messages.len().saturating_sub(window);
-    messages[start..]
+/// A translate reply replayed for chat context = the full raw JSON (so chat can
+/// reference word cards). For translate context we only need the plain
+/// translation text (term/style consistency), not the card JSON.
+fn translate_reply_text(m: &Message) -> Option<String> {
+    if let Some(r) = &m.result {
+        if !r.translation.trim().is_empty() {
+            return Some(r.translation.clone());
+        }
+        if !r.sentences.is_empty() {
+            return Some(
+                r.sentences
+                    .iter()
+                    .map(|s| s.dst.as_str())
+                    .collect::<Vec<_>>()
+                    .join(""),
+            );
+        }
+    }
+    m.raw.clone()
+}
+
+/// Replay persisted history as API messages, filtered by the CURRENT turn mode:
+///
+/// - **Translate**: only past *translate* turns, and assistant replies as plain
+///   translation text (no chat noise, no card JSON) — keeps term/style
+///   consistency without bloating tokens or leaking chat into translation.
+/// - **Chat**: the full history — translate replies as raw JSON so chat can
+///   reference earlier translations and word cards.
+fn history_to_api(messages: &[Message], window: usize, current: Mode) -> Vec<ChatMessage> {
+    let kept: Vec<&Message> = match current {
+        Mode::Translate => messages.iter().filter(|m| m.mode == Mode::Translate).collect(),
+        Mode::Chat => messages.iter().collect(),
+    };
+    let start = kept.len().saturating_sub(window);
+    kept[start..]
         .iter()
         .filter_map(|m| match m.role {
             Role::User => m
                 .text
                 .as_ref()
                 .map(|t| ChatMessage::user(prompt::tag_user_text(m.mode, t))),
-            Role::Assistant => match m.mode {
-                Mode::Translate => m
+            Role::Assistant => match (current, m.mode) {
+                // translate context: assistant → plain translation only
+                (Mode::Translate, Mode::Translate) => {
+                    translate_reply_text(m).map(ChatMessage::assistant)
+                }
+                // chat context: translate replies → full JSON (referenceable)
+                (Mode::Chat, Mode::Translate) => m
                     .raw
                     .clone()
                     .or_else(|| {
@@ -62,7 +96,7 @@ fn history_to_api(messages: &[Message], window: usize) -> Vec<ChatMessage> {
                             .and_then(|r| serde_json::to_string(r).ok())
                     })
                     .map(ChatMessage::assistant),
-                Mode::Chat => m.text.clone().map(ChatMessage::assistant),
+                (_, Mode::Chat) => m.text.clone().map(ChatMessage::assistant),
             },
         })
         .collect()
@@ -89,14 +123,20 @@ pub async fn send(
     let mem = memory.load()?;
     let mem_ctx = MemoryStore::prompt_context(&mem, config.memory.max_context_words);
 
-    let mut api_messages = vec![ChatMessage::system(prompt::system_prompt(
-        &mem_ctx,
-        config.memory.min_ielts_band,
-    ))];
-    api_messages.extend(history_to_api(
-        &session.messages,
-        config.session.max_context_messages,
-    ));
+    // Per-mode system prompt + history window: translate and chat are isolated
+    // (see prompt.rs / history_to_api).
+    let (system, window) = match mode {
+        Mode::Translate => (
+            prompt::translate_system_prompt(&mem_ctx, config.memory.min_ielts_band),
+            config.session.translate_context_messages,
+        ),
+        Mode::Chat => (
+            prompt::chat_system_prompt(&mem_ctx),
+            config.session.max_context_messages,
+        ),
+    };
+    let mut api_messages = vec![ChatMessage::system(system)];
+    api_messages.extend(history_to_api(&session.messages, window, mode));
     api_messages.push(ChatMessage::user(prompt::tag_user_text(mode, &text)));
 
     // Persist the user turn immediately so it survives a failed request.
@@ -454,8 +494,8 @@ mod tests {
             Some("**ubiquitous** 的意思是无处不在")
         );
 
-        // history replay: translate reply goes out as its raw JSON
-        let api = history_to_api(&saved.messages, 40);
+        // chat context: full history, translate reply as raw JSON
+        let api = history_to_api(&saved.messages, 40, Mode::Chat);
         assert!(api[0].content.starts_with("[translate]"));
         assert!(api[1].content.contains("智能手机"));
         assert!(api[2].content.starts_with("[chat]"));
@@ -472,9 +512,62 @@ mod tests {
             ts: now(),
         };
         let msgs: Vec<Message> = (0..10).map(mk).collect();
-        let api = history_to_api(&msgs, 3);
+        let api = history_to_api(&msgs, 3, Mode::Chat);
         assert_eq!(api.len(), 3);
         assert!(api[0].content.ends_with("m7"));
         assert!(api[2].content.ends_with("m9"));
+    }
+
+    #[test]
+    fn translate_context_excludes_chat_and_card_json() {
+        let ts = now();
+        let user = |mode, t: &str| Message {
+            role: Role::User,
+            mode,
+            text: Some(t.into()),
+            result: None,
+            raw: None,
+            ts: ts.clone(),
+        };
+        let translate_reply = Message {
+            role: Role::Assistant,
+            mode: Mode::Translate,
+            text: None,
+            result: Some(TranslationResult {
+                translation: "智能手机无处不在。".into(),
+                sentences: vec![],
+                source_lang: None,
+                target_lang: None,
+                words: vec![],
+                usages: vec![],
+            }),
+            raw: Some("{\"translation\":\"智能手机无处不在。\",\"words\":[/*卡片JSON*/]}".into()),
+            ts: ts.clone(),
+        };
+        let chat_reply = Message {
+            role: Role::Assistant,
+            mode: Mode::Chat,
+            text: Some("这是聊天讲解噪音".into()),
+            result: None,
+            raw: None,
+            ts: ts.clone(),
+        };
+        let msgs = vec![
+            user(Mode::Translate, "Smartphones are ubiquitous."),
+            translate_reply,
+            user(Mode::Chat, "为什么用 ubiquitous？"),
+            chat_reply,
+        ];
+
+        // 翻译上下文：只保留翻译回合，assistant 只回放译文（不含卡片 JSON），聊天被过滤
+        let api = history_to_api(&msgs, 12, Mode::Translate);
+        assert_eq!(api.len(), 2, "只应剩翻译回合的 user + assistant");
+        assert!(api[0].content.starts_with("[translate]"));
+        assert_eq!(api[1].content, "智能手机无处不在。"); // 纯译文，不是 JSON
+        assert!(!api[1].content.contains("words"), "翻译上下文不应含卡片 JSON");
+        assert!(
+            !api.iter().any(|m| m.content.contains("聊天讲解噪音")),
+            "翻译上下文不应含聊天内容"
+        );
     }
 }
