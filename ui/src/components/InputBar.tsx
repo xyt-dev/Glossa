@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import type { Mode } from "../types";
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
   onSend: (text: string) => void;
 }
 
-export default function InputBar({ mode, busy, disabled, onModeChange, onSend }: Props) {
+function InputBar({ mode, busy, disabled, onModeChange, onSend }: Props) {
   const [text, setText] = useState("");
 
   const submit = () => {
@@ -62,3 +62,5 @@ export default function InputBar({ mode, busy, disabled, onModeChange, onSend }:
     </div>
   );
 }
+
+export default memo(InputBar);

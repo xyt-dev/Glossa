@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent, TouchEvent } from "react";
 import { uiScale } from "../platform";
 import type { SessionMeta } from "../types";
@@ -14,7 +14,8 @@ interface CtxMenu {
 interface Props {
   sessions: SessionMeta[];
   activeId: string | null;
-  busy: boolean;
+  /** 正在流式生成的会话 id 集合，用于在 tab 上显示进度指示 */
+  streamingIds: Set<string>;
   onSelect: (id: string) => void;
   onNew: () => void;
   onDelete: (id: string) => void;
@@ -34,10 +35,12 @@ function shortDate(iso: string): string {
     : `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export default function Sidebar({
+// memo：流式期间 props 引用稳定（见 App streamingIds 稳定化 + useCallback 回调），
+// 侧边栏不再随每个 token 重渲染。
+function Sidebar({
   sessions,
   activeId,
-  busy,
+  streamingIds,
   onSelect,
   onNew,
   onDelete,
@@ -156,7 +159,7 @@ export default function Sidebar({
           «
         </button>
       </div>
-      <button className="new-session" onClick={onNew} disabled={busy}>
+      <button className="new-session" onClick={onNew}>
         ＋ 新会话
       </button>
       <nav className="session-list">
@@ -194,7 +197,15 @@ export default function Sidebar({
             ) : (
               <>
                 <span className="session-title">{s.title}</span>
-                <span className="session-date">{shortDate(s.updated)}</span>
+                {streamingIds.has(s.id) ? (
+                  <span
+                    className="session-streaming"
+                    role="img"
+                    aria-label="生成中"
+                  />
+                ) : (
+                  <span className="session-date">{shortDate(s.updated)}</span>
+                )}
               </>
             )}
           </div>
@@ -240,3 +251,5 @@ export default function Sidebar({
     </aside>
   );
 }
+
+export default memo(Sidebar);

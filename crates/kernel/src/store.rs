@@ -27,6 +27,10 @@ pub struct Message {
     /// also the fallback display when parsing failed).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub raw: Option<String>,
+    /// Assistant reasoning / "thinking" trace, streamed separately and shown in
+    /// a collapsible panel. Absent on user turns and non-reasoning models.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning: Option<String>,
     pub ts: String,
 }
 

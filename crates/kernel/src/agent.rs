@@ -3,7 +3,7 @@ use serde::Serialize;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 
-use crate::client::{ChatMessage, Client};
+use crate::client::{ChatMessage, Client, Delta};
 use crate::config::{Config, Profile};
 use crate::memory::MemoryStore;
 use crate::prompt;
@@ -15,6 +15,10 @@ use crate::{Mode, Result};
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum SendEvent {
+    /// Reasoning ("thinking") token delta, shown before the answer.
+    Reasoning {
+        text: String,
+    },
     /// Raw token delta (typewriter display).
     Delta {
         text: String,
@@ -152,6 +156,7 @@ pub async fn send(
         text: Some(text),
         result: None,
         raw: None,
+        reasoning: None,
         ts: now(),
     });
     session.updated = now();
@@ -160,7 +165,9 @@ pub async fn send(
     let (tx, rx) = mpsc::channel::<SendEvent>(64);
     tokio::spawn(async move {
         match run_turn(&client, &profile, api_messages, mode, &tx).await {
-            Ok(outcome) => {
+            Ok((outcome, reasoning)) => {
+                // Keep the thinking trace only if the model actually produced one.
+                let reasoning = Some(reasoning).filter(|r| !r.trim().is_empty());
                 let msg = match outcome {
                     Outcome::Chat(text) => Message {
                         role: Role::Assistant,
@@ -168,6 +175,7 @@ pub async fn send(
                         text: Some(text),
                         result: None,
                         raw: None,
+                        reasoning,
                         ts: now(),
                     },
                     Outcome::Translated { result, raw } => Message {
@@ -176,6 +184,7 @@ pub async fn send(
                         text: None,
                         result: Some(result),
                         raw: Some(raw),
+                        reasoning,
                         ts: now(),
                     },
                     Outcome::Fallback(raw) => Message {
@@ -184,6 +193,7 @@ pub async fn send(
                         text: None,
                         result: None,
                         raw: Some(raw),
+                        reasoning,
                         ts: now(),
                     },
                 };
@@ -224,25 +234,36 @@ enum Outcome {
     Fallback(String),
 }
 
+/// Returns the resolved outcome plus the accumulated reasoning ("thinking")
+/// trace. Reasoning is streamed and collected separately from `full` so it
+/// never pollutes the answer that gets parsed / persisted.
 async fn run_turn(
     client: &Client,
     profile: &Profile,
     messages: Vec<ChatMessage>,
     mode: Mode,
     tx: &mpsc::Sender<SendEvent>,
-) -> Result<Outcome> {
+) -> Result<(Outcome, String)> {
     let json_mode = mode == Mode::Translate;
     let mut stream = client.chat_stream(profile, &messages, json_mode).await?;
     let mut full = String::new();
+    let mut reasoning = String::new();
     while let Some(item) = stream.next().await {
-        let delta = item?;
-        full.push_str(&delta);
         // A dropped receiver just means the UI stopped listening; keep going
         // so the turn is still persisted.
-        let _ = tx.send(SendEvent::Delta { text: delta }).await;
+        match item? {
+            Delta::Content(delta) => {
+                full.push_str(&delta);
+                let _ = tx.send(SendEvent::Delta { text: delta }).await;
+            }
+            Delta::Reasoning(delta) => {
+                reasoning.push_str(&delta);
+                let _ = tx.send(SendEvent::Reasoning { text: delta }).await;
+            }
+        }
     }
-    match mode {
-        Mode::Chat => Ok(Outcome::Chat(full)),
+    let outcome = match mode {
+        Mode::Chat => Outcome::Chat(full),
         Mode::Translate => match schema::parse_translation(&full) {
             Ok(result) => {
                 let _ = tx
@@ -250,7 +271,7 @@ async fn run_turn(
                         result: result.clone(),
                     })
                     .await;
-                Ok(Outcome::Translated { result, raw: full })
+                Outcome::Translated { result, raw: full }
             }
             Err(err) => {
                 let (sys, usr) = prompt::repair_messages(&full, &err.to_string());
@@ -269,16 +290,17 @@ async fn run_turn(
                                 result: result.clone(),
                             })
                             .await;
-                        Ok(Outcome::Translated { result, raw })
+                        Outcome::Translated { result, raw }
                     }
                     Err(_) => {
                         let _ = tx.send(SendEvent::Fallback { raw: full.clone() }).await;
-                        Ok(Outcome::Fallback(full))
+                        Outcome::Fallback(full)
                     }
                 }
             }
         },
-    }
+    };
+    Ok((outcome, reasoning))
 }
 
 #[cfg(test)]
@@ -465,6 +487,7 @@ mod tests {
             text: Some("Smartphones are ubiquitous.".into()),
             result: None,
             raw: None,
+            reasoning: None,
             ts: now(),
         });
         s.messages.push(Message {
@@ -473,6 +496,7 @@ mod tests {
             text: None,
             result: None,
             raw: Some("{\"translation\":\"智能手机无处不在。\"}".into()),
+            reasoning: None,
             ts: now(),
         });
         f.store.save(&s).unwrap();
@@ -501,6 +525,53 @@ mod tests {
         assert!(api[2].content.starts_with("[chat]"));
     }
 
+    #[tokio::test]
+    async fn reasoning_is_streamed_and_persisted_apart_from_answer() {
+        let server = MockServer::start().await;
+        // First reasoning_content deltas (thinking), then content deltas (answer).
+        let mut body = String::new();
+        for r in ["让我想想", "……"] {
+            let p = json!({"choices":[{"delta":{"reasoning_content": r}}]});
+            body.push_str(&format!("data: {p}\n\n"));
+        }
+        for c in ["答案", "在此"] {
+            let p = json!({"choices":[{"delta":{"content": c}}]});
+            body.push_str(&format!("data: {p}\n\n"));
+        }
+        body.push_str("data: [DONE]\n\n");
+        Mock::given(method("POST"))
+            .and(path("/chat/completions"))
+            .and(body_partial_json(json!({"stream": true})))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(body, "text/event-stream"))
+            .mount(&server)
+            .await;
+
+        let f = fixture(&server).await;
+        let events = collect(&f, "问题", Mode::Chat).await;
+
+        let reasoning: String = events
+            .iter()
+            .filter_map(|e| match e {
+                SendEvent::Reasoning { text } => Some(text.clone()),
+                _ => None,
+            })
+            .collect();
+        let content: String = events
+            .iter()
+            .filter_map(|e| match e {
+                SendEvent::Delta { text } => Some(text.clone()),
+                _ => None,
+            })
+            .collect();
+        // reasoning surfaced on its own channel; answer deltas exclude it
+        assert_eq!(reasoning, "让我想想……");
+        assert_eq!(content, "答案在此");
+
+        let saved = f.store.load(&f.session.id).unwrap();
+        assert_eq!(saved.messages[1].text.as_deref(), Some("答案在此"));
+        assert_eq!(saved.messages[1].reasoning.as_deref(), Some("让我想想……"));
+    }
+
     #[test]
     fn history_window_truncates() {
         let mk = |i: usize| Message {
@@ -509,6 +580,7 @@ mod tests {
             text: Some(format!("m{i}")),
             result: None,
             raw: None,
+            reasoning: None,
             ts: now(),
         };
         let msgs: Vec<Message> = (0..10).map(mk).collect();
@@ -527,6 +599,7 @@ mod tests {
             text: Some(t.into()),
             result: None,
             raw: None,
+            reasoning: None,
             ts: ts.clone(),
         };
         let translate_reply = Message {
@@ -542,6 +615,7 @@ mod tests {
                 usages: vec![],
             }),
             raw: Some("{\"translation\":\"智能手机无处不在。\",\"words\":[/*卡片JSON*/]}".into()),
+            reasoning: None,
             ts: ts.clone(),
         };
         let chat_reply = Message {
@@ -550,6 +624,7 @@ mod tests {
             text: Some("这是聊天讲解噪音".into()),
             result: None,
             raw: None,
+            reasoning: None,
             ts: ts.clone(),
         };
         let msgs = vec![

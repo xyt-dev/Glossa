@@ -45,6 +45,8 @@ export interface Message {
   text?: string | null;
   result?: TranslationResult | null;
   raw?: string | null;
+  /** Assistant reasoning / "thinking" trace, shown in a collapsible panel. */
+  reasoning?: string | null;
   ts: string;
 }
 
@@ -60,6 +62,7 @@ export interface Session extends SessionMeta {
 }
 
 export type SendEvent =
+  | { type: "reasoning"; text: string }
   | { type: "delta"; text: string }
   | { type: "parsed"; result: TranslationResult }
   | { type: "fallback"; raw: string }

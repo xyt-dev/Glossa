@@ -49,9 +49,12 @@ export default function App() {
   const [active, setActive] = useState<Session | null>(null);
   const [memory, setMemory] = useState<VocabMemory>({ profile_summary: "", words: [] });
   const [mode, setMode] = useState<Mode>("translate");
-  const [busy, setBusy] = useState(false);
-  const [streamText, setStreamText] = useState("");
-  const [streamMode, setStreamMode] = useState<Mode>("translate");
+  // 每个会话独立的进行中流式状态，按会话 id 存放；不同会话互不阻塞，可并行生成。
+  // user 是本轮已发送的问题：它绑定在流式状态上（而非 active），这样切走再切回、
+  // 甚至在后端持久化用户消息前回读，都不会丢失问题气泡。
+  const [streams, setStreams] = useState<
+    Record<string, { text: string; reasoning: string; mode: Mode; user: string }>
+  >({});
   const [error, setError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showVocab, setShowVocab] = useState(false);
@@ -63,6 +66,17 @@ export default function App() {
 
   const toggleSidebar = useCallback(() => {
     setSidebarOpen((open) => !open);
+  }, []);
+
+  // 稳定引用，保证 memo(Sidebar) 在流式期间不被这两个回调的新身份击穿
+  const openSettings = useCallback(() => {
+    setShowSettings(true);
+    // 窄屏抽屉：打开弹窗时收起侧边栏，避免遮挡
+    if (window.innerWidth < NARROW) setSidebarOpen(false);
+  }, []);
+  const openVocab = useCallback(() => {
+    setShowVocab(true);
+    if (window.innerWidth < NARROW) setSidebarOpen(false);
   }, []);
 
   useEffect(() => {
@@ -138,23 +152,19 @@ export default function App() {
     setSessions(await api.listSessions());
   }, []);
 
-  const selectSession = useCallback(
-    async (id: string) => {
-      if (busy) return;
-      try {
-        setActive(await api.loadSession(id));
-        setError(null);
-        // 窄屏抽屉：选中会话后自动收起
-        if (window.innerWidth < NARROW) setSidebarOpen(false);
-      } catch (e) {
-        setError(String(e));
-      }
-    },
-    [busy],
-  );
+  const selectSession = useCallback(async (id: string) => {
+    // 生成中也允许切换会话：正在流式的会话在后台继续，切回来仍能看到
+    try {
+      setActive(await api.loadSession(id));
+      setError(null);
+      // 窄屏抽屉：选中会话后自动收起
+      if (window.innerWidth < NARROW) setSidebarOpen(false);
+    } catch (e) {
+      setError(String(e));
+    }
+  }, []);
 
   const newSession = useCallback(async () => {
-    if (busy) return;
     try {
       const s = await api.createSession();
       await refreshSessions();
@@ -162,7 +172,7 @@ export default function App() {
     } catch (e) {
       setError(String(e));
     }
-  }, [busy, refreshSessions]);
+  }, [refreshSessions]);
 
   const doRemoveSession = useCallback(
     async (id: string) => {
@@ -203,42 +213,55 @@ export default function App() {
 
   const send = useCallback(
     async (text: string) => {
-      if (!active || busy) return;
+      if (!active) return;
       const sessionId = active.id;
-      setBusy(true);
+      // 同一会话正在生成时不重复发送（输入框已按 activeBusy 禁用，这里兜底）。
+      // 后端按会话串行保存，同一会话并发发送会相互覆盖历史。
+      const turnMode = mode;
       setError(null);
-      setStreamText("");
-      setStreamMode(mode);
-      setActive((a) =>
-        a
-          ? {
-              ...a,
-              messages: [
-                ...a.messages,
-                { role: "user", mode, text, ts: new Date().toISOString() },
-              ],
-            }
-          : a,
-      );
+      // 问题气泡从这里渲染（Conversation 据 streamUser），不再乐观改写 active，
+      // 从根上避免“切走再切回时问题消失”的时序竞态。
+      setStreams((s) => ({
+        ...s,
+        [sessionId]: { text: "", reasoning: "", mode: turnMode, user: text },
+      }));
       try {
-        await api.sendMessage(sessionId, text, mode, (e) => {
-          if (e.type === "delta") setStreamText((prev) => prev + e.text);
+        await api.sendMessage(sessionId, text, turnMode, (e) => {
+          if (e.type === "delta")
+            setStreams((s) =>
+              s[sessionId]
+                ? { ...s, [sessionId]: { ...s[sessionId], text: s[sessionId].text + e.text } }
+                : s,
+            );
+          else if (e.type === "reasoning")
+            setStreams((s) =>
+              s[sessionId]
+                ? {
+                    ...s,
+                    [sessionId]: { ...s[sessionId], reasoning: s[sessionId].reasoning + e.text },
+                  }
+                : s,
+            );
           else if (e.type === "error") setError(e.message);
         });
       } catch (e) {
         setError(String(e));
       }
-      // reload canonical state (turn is persisted before `done`)
+      // 回读权威状态（turn 在 done 之前已持久化）；仅在仍停留在该会话时替换视图
       try {
-        setActive(await api.loadSession(sessionId));
+        const reloaded = await api.loadSession(sessionId);
+        setActive((a) => (a && a.id === sessionId ? reloaded : a));
         await refreshSessions();
       } catch {
-        // session may have been deleted meanwhile; ignore
+        // 会话可能同时被删除，忽略
       }
-      setStreamText("");
-      setBusy(false);
+      setStreams((s) => {
+        const next = { ...s };
+        delete next[sessionId];
+        return next;
+      });
     },
-    [active, busy, mode, refreshSessions],
+    [active, mode, refreshSessions],
   );
 
   const toggleMark = useCallback(async (input: MarkInput, marked: boolean) => {
@@ -262,6 +285,16 @@ export default function App() {
     () => new Set(memory.words.map((w) => `${w.kind}:${w.word.toLowerCase()}`)),
     [memory],
   );
+
+  // 侧边栏据此在各会话 tab 上显示“生成中”指示。身份只在“哪些会话在流式”这个集合
+  // 变化时更新——文字增量（每 token）不重建，配合 memo(Sidebar) 避免每 token 重渲染。
+  const streamKey = Object.keys(streams).sort().join(" ");
+  const streamingIds = useMemo(
+    () => new Set(streamKey ? streamKey.split(" ") : []),
+    [streamKey],
+  );
+  const activeStream = active ? streams[active.id] : undefined;
+  const activeBusy = activeStream != null;
 
   return (
     <div className={`app${sidebarOpen ? "" : " sidebar-collapsed"}`}>
@@ -306,20 +339,13 @@ export default function App() {
       <Sidebar
         sessions={sessions}
         activeId={active?.id ?? null}
-        busy={busy}
+        streamingIds={streamingIds}
         onSelect={selectSession}
         onNew={newSession}
         onDelete={removeSession}
         onRename={renameSession}
-        onSettings={() => {
-          setShowSettings(true);
-          // 窄屏抽屉：打开弹窗时收起侧边栏，避免遮挡
-          if (window.innerWidth < NARROW) setSidebarOpen(false);
-        }}
-        onVocab={() => {
-          setShowVocab(true);
-          if (window.innerWidth < NARROW) setSidebarOpen(false);
-        }}
+        onSettings={openSettings}
+        onVocab={openVocab}
         onCollapse={toggleSidebar}
       />
       <main className="main">
@@ -349,16 +375,18 @@ export default function App() {
         )}
         <Conversation
           session={active}
-          busy={busy}
-          streamText={streamText}
-          streamMode={streamMode}
+          busy={activeBusy}
+          streamText={activeStream?.text ?? ""}
+          streamReasoning={activeStream?.reasoning ?? ""}
+          streamMode={activeStream?.mode ?? mode}
+          streamUser={activeStream?.user ?? null}
           markedSet={markedSet}
           onToggleMark={toggleMark}
         />
         <InputBar
           mode={mode}
           onModeChange={setMode}
-          busy={busy}
+          busy={activeBusy}
           disabled={!active}
           onSend={send}
         />

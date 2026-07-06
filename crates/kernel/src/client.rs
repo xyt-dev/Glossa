@@ -12,6 +12,15 @@ pub struct ChatMessage {
     pub content: String,
 }
 
+/// A streamed chunk from the model: either reasoning ("thinking") or the
+/// user-visible answer content. Providers name the reasoning field differently
+/// (`reasoning_content` on DeepSeek, `reasoning` on some aggregators).
+#[derive(Debug, Clone)]
+pub enum Delta {
+    Reasoning(String),
+    Content(String),
+}
+
 impl ChatMessage {
     pub fn system(content: impl Into<String>) -> Self {
         Self {
@@ -148,13 +157,15 @@ impl Client {
             .ok_or(Error::EmptyResponse)
     }
 
-    /// Streaming completion; yields content deltas (reasoning deltas are skipped).
+    /// Streaming completion; yields reasoning and content deltas separately
+    /// (see [`Delta`]). Reasoning is surfaced (not dropped) so the UI can show
+    /// the "thinking" trace; only content is the actual answer.
     pub async fn chat_stream(
         &self,
         profile: &Profile,
         messages: &[ChatMessage],
         json_mode: bool,
-    ) -> Result<impl Stream<Item = Result<String>> + Send + Unpin> {
+    ) -> Result<impl Stream<Item = Result<Delta>> + Send + Unpin> {
         let body = Self::build_body(profile, messages, true, json_mode);
         let resp = self.post(profile, &body).await?;
         let stream = resp
@@ -167,10 +178,21 @@ impl Client {
                             return None;
                         }
                         match serde_json::from_str::<Value>(&ev.data) {
-                            Ok(v) => v["choices"][0]["delta"]["content"]
-                                .as_str()
-                                .filter(|s| !s.is_empty())
-                                .map(|s| Ok(s.to_owned())),
+                            Ok(v) => {
+                                let delta = &v["choices"][0]["delta"];
+                                // Reasoning comes before content; field name varies by provider.
+                                let reasoning = delta["reasoning_content"]
+                                    .as_str()
+                                    .or_else(|| delta["reasoning"].as_str())
+                                    .filter(|s| !s.is_empty());
+                                if let Some(r) = reasoning {
+                                    return Some(Ok(Delta::Reasoning(r.to_owned())));
+                                }
+                                delta["content"]
+                                    .as_str()
+                                    .filter(|s| !s.is_empty())
+                                    .map(|s| Ok(Delta::Content(s.to_owned())))
+                            }
                             // Tolerate non-JSON keep-alives some providers send.
                             Err(_) => None,
                         }

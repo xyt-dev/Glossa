@@ -313,6 +313,17 @@ input[type="number"]::-webkit-outer-spin-button {
   flex-shrink: 0;
 }
 
+/* 会话在后台流式生成时，tab 上以小转圈替代时间，表明它仍在工作 */
+.session-streaming {
+  flex-shrink: 0;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--bg-hover);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
 /* 会话的删除/重命名入口在右键菜单，tab 上不再放操作按钮 */
 
 .rename-input {
@@ -995,20 +1006,76 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .spinner {
-  flex-shrink: 0;
+  flex: none; /* 别被 flex 容器拉伸/压扁成椭圆 */
+  display: inline-block;
+  box-sizing: border-box;
   width: 14px;
   height: 14px;
+  aspect-ratio: 1; /* 保证正圆 */
   margin-top: 3px;
-  border: 2px solid var(--bg-hover);
+  /* 只留一段 accent 圆弧、其余三边透明——不画灰色轨道，避免边角拼接色不均 */
+  border: 2px solid transparent;
   border-top-color: var(--accent);
   border-radius: 50%;
+  /* will-change 让它在合成层旋转：流式期间主线程每 token 忙碌也不会卡住动画 */
   animation: spin 0.8s linear infinite;
+  will-change: transform;
 }
 
 @keyframes spin {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* ---- 思考（reasoning）：内嵌在回复气泡顶部的可折叠段 ---------------- */
+/* 不是独立盒子，也不做内部滚动——随整个对话区一起滚，更宽松。 */
+.reasoning {
+  margin-bottom: 12px;
+  border-bottom: 1px dashed var(--border-strong, var(--border));
+}
+
+.reasoning-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0 0 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--fg-faint);
+  font-size: 14px;
+  text-align: left;
+}
+
+.reasoning-head:hover {
+  color: var(--fg-muted);
+}
+
+.reasoning-caret {
+  flex-shrink: 0;
+  font-size: 11px;
+  width: 12px;
+}
+
+.reasoning-label {
+  flex: 1;
+}
+
+.reasoning-spinner {
+  width: 11px;
+  height: 11px;
+  margin-top: 0;
+}
+
+.reasoning-body {
+  padding: 0 2px 12px 20px;
+  color: var(--fg-faint);
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* ---- 输入栏 ---------------------------------------------------------- */
