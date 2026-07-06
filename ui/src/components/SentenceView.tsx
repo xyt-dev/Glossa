@@ -75,8 +75,14 @@ export default function SentenceView({ sentences, markedSet, onToggleMark }: Pro
             </button>
           }
         >
-          <div className="pop-src">{active.src}</div>
-          <div className="pop-dst">{active.dst}</div>
+          <div className="pop-block">
+            <div className="pop-label">原文</div>
+            <div className="pop-src">{active.src}</div>
+          </div>
+          <div className="pop-block">
+            <div className="pop-label">译文</div>
+            <div className="pop-dst">{active.dst}</div>
+          </div>
         </Popover>
       )}
     </div>

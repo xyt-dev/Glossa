@@ -592,37 +592,98 @@ input[type="number"]::-webkit-outer-spin-button {
   justify-content: flex-start;
 }
 
-/* 翻译块 */
+/* 翻译块：默认像一页可阅读内容，而不是功能面板。 */
+/* 翻译模式尽量抛弃聊天气泡感，更像一页可阅读内容：对称圆角、更宽、留白更足。 */
 .translation-block {
-  max-width: min(1040px, 92%);
-  min-width: min(520px, 48%);
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 6px 16px 16px 16px;
-  padding: 16px 18px;
-  box-shadow: 0 8px 28px var(--shadow);
+  width: min(1280px, 100%);
+  max-width: min(1280px, 98%);
+  min-width: 0;
+  background: color-mix(in srgb, var(--bg-surface) 92%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: 18px;
+  padding: 22px 24px 24px;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--fg) 3%, transparent),
+    0 10px 28px color-mix(in srgb, var(--shadow) 30%, transparent);
+}
+
+.translation-article {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.translation-section + .translation-section {
+  padding-top: 16px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+}
+
+.translation-source-section {
+  min-width: 0;
+}
+
+.translation-notes-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.translation-section-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.translation-section-title {
+  font-size: 16px;
+  line-height: 1.35;
+  letter-spacing: 0.04em;
+  color: var(--fg-muted);
+}
+
+.translation-section-note {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--fg-faint);
 }
 
 .translation-text {
   font-size: 21px;
-  line-height: 1.7;
+  line-height: 1.8;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-/* 顶部句子区：原文按句，hover 高亮，点击弹浮动窗口看译文 */
+/* 顶部句子区：原文按句，hover 高亮，点击弹浮动窗口看译文。
+   这里不是一坨裸文本，而是一个轻量阅读区：稍微内凹、留白更足，读起来更像
+   “逐句阅读”而不是“正文里掺了几个可点 span”。 */
 .sentence-view {
   font-size: 20px;
-  line-height: 1.95;
+  line-height: 2;
   color: var(--fg);
   word-break: break-word;
+  background: color-mix(in srgb, var(--bg) 48%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--fg) 4%, transparent);
+}
+
+.sentence-view::before {
+  content: "原文（点击单句看译文）";
+  display: block;
+  margin-bottom: 8px;
+  font-size: 15px;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  color: var(--fg-faint);
 }
 
 .sentence-chip {
   cursor: pointer;
-  border-radius: 6px;
-  padding: 1px 5px;
-  margin: 0 1px;
+  border-radius: 7px;
+  padding: 2px 6px;
+  margin: 0 2px;
   border-bottom: 2px solid transparent;
   /* 跨行时每段都保留圆角 */
   -webkit-box-decoration-break: clone;
@@ -630,18 +691,21 @@ input[type="number"]::-webkit-outer-spin-button {
   transition:
     background 0.15s ease,
     border-color 0.15s ease,
-    color 0.15s ease;
+    color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .sentence-chip:hover {
   background: var(--accent-soft);
   border-bottom-color: var(--accent);
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .sentence-chip.active {
   background: var(--accent);
   border-bottom-color: var(--accent);
   color: var(--accent-fg);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--accent-fg) 10%, transparent);
 }
 
 /* ---- 通用锚定浮层 Popover（句子翻译、未来阅读划词翻译复用）------------ */
@@ -649,9 +713,9 @@ input[type="number"]::-webkit-outer-spin-button {
   position: fixed;
   z-index: 70;
   transform: translateX(-50%);
-  min-width: 320px;
+  min-width: min(360px, 92vw);
   /* max-width 由组件按视口传入 style；这里给回退上限 */
-  max-width: min(560px, 92vw);
+  max-width: min(720px, 94vw);
   max-height: min(58vh, 460px);
   display: flex;
   flex-direction: column;
@@ -712,17 +776,30 @@ input[type="number"]::-webkit-outer-spin-button {
   border-bottom: 1px solid var(--border);
 }
 
+.pop-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pop-label {
+  font-size: 14px;
+  line-height: 1.35;
+  letter-spacing: 0.04em;
+  color: var(--fg-faint);
+}
+
 .pop-src {
   font-size: 16px;
   color: var(--fg-muted);
-  line-height: 1.6;
+  line-height: 1.7;
   word-break: break-word;
 }
 
 .pop-dst {
-  font-size: 20px;
+  font-size: 21px;
   color: var(--fg);
-  line-height: 1.7;
+  line-height: 1.8;
   word-break: break-word;
 }
 
@@ -732,19 +809,21 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .word-cards {
-  margin-top: 12px;
+  margin-top: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
 .word-card {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--ipa);
+  background: color-mix(in srgb, var(--bg) 58%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+  border-left: 3px solid color-mix(in srgb, var(--ipa) 82%, var(--border));
   border-radius: 12px;
   padding: 12px 14px;
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--fg) 5%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--fg) 4%, transparent),
+    0 3px 10px color-mix(in srgb, var(--shadow) 28%, transparent);
 }
 
 /* 卡片类型徽标：词=青，Native 用法=绿，句=主题色 */
@@ -809,50 +888,58 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .mark-btn {
-  font-size: 16px;
+  font-size: 15px;
   color: var(--fg-faint);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 2px 8px;
-  transition: all 0.12s;
+  border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
+  border-radius: 999px;
+  padding: 3px 10px;
+  background: color-mix(in srgb, var(--bg) 58%, transparent);
+  transition:
+    color 0.12s,
+    border-color 0.12s,
+    background 0.12s,
+    box-shadow 0.12s;
 }
 
 .mark-btn:hover {
   color: var(--accent);
-  border-color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 72%, var(--border));
+  background: var(--accent-soft);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .mark-btn.on {
-  background: var(--accent);
+  background: color-mix(in srgb, var(--accent) 86%, var(--bg));
   border-color: var(--accent);
   color: var(--accent-fg);
 }
 
 .meaning {
-  margin-top: 6px;
+  margin-top: 7px;
   color: var(--fg);
+  line-height: 1.7;
 }
 
 .native-usage {
-  margin-top: 6px;
+  margin-top: 7px;
   color: var(--fg-muted);
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
 .native-tag {
   font-size: 15px;
   font-weight: 700;
   color: var(--ok);
-  border: 1px solid var(--ok);
+  border: 1px solid color-mix(in srgb, var(--ok) 70%, var(--border));
   border-radius: 4px;
   padding: 0 4px;
   margin-right: 6px;
-  background: color-mix(in srgb, var(--ok) 12%, transparent);
+  background: color-mix(in srgb, var(--ok) 10%, transparent);
 }
 
 /* native 表达卡 */
 .usage-card {
-  border-left-color: var(--ok);
+  border-left-color: color-mix(in srgb, var(--ok) 80%, var(--border));
 }
 
 .usage-phrase {
@@ -862,34 +949,34 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .usage-explanation {
-  margin-top: 6px;
+  margin-top: 7px;
   color: var(--fg);
-  line-height: 1.7;
+  line-height: 1.75;
 }
 
 .examples {
-  margin-top: 8px;
+  margin-top: 10px;
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .examples li {
-  border-left: 3px solid var(--accent);
+  border-left: 2px solid color-mix(in srgb, var(--accent) 58%, transparent);
   padding-left: 10px;
 }
 
 .examples .en {
   display: block;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .examples .zh {
   display: block;
   color: var(--fg-muted);
   font-size: 16px;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .fallback-note {
@@ -1713,6 +1800,18 @@ body.platform-web .app {
   .generating {
     max-width: 100%;
     min-width: 0;
+  }
+
+  .translation-block {
+    width: 100%;
+    padding: 16px 14px 18px;
+    border-radius: 14px;
+  }
+
+  .popover {
+    min-width: min(300px, 94vw);
+    max-width: 94vw;
+    max-height: min(68vh, 520px);
   }
 
   .user-bubble {

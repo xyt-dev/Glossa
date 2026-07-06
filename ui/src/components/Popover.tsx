@@ -49,7 +49,7 @@ export default function Popover({
   onClose,
   children,
   footer,
-  maxWidth = 560,
+  maxWidth = 720,
   className,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
