@@ -1017,14 +1017,19 @@ input[type="number"]::-webkit-outer-spin-button {
   border: 2px solid transparent;
   border-top-color: var(--accent);
   border-radius: 50%;
-  /* will-change 让它在合成层旋转：流式期间主线程每 token 忙碌也不会卡住动画 */
   animation: spin 0.8s linear infinite;
-  will-change: transform;
+  pointer-events: none; /* 纯装饰：别让光标 hover 命中它、触发反复重绘 */
 }
 
+/* 关键帧里带 translateZ(0)：让它整段动画都停在一个稳定的合成层上，
+   由 GPU 独立旋转——不随主线程繁忙或 hover 重绘卡顿（比 will-change 更稳，
+   避免 WebKitGTK 反复升降层导致的跳帧）。 */
 @keyframes spin {
+  from {
+    transform: translateZ(0) rotate(0);
+  }
   to {
-    transform: rotate(360deg);
+    transform: translateZ(0) rotate(360deg);
   }
 }
 
@@ -1053,10 +1058,19 @@ input[type="number"]::-webkit-outer-spin-button {
   color: var(--fg-muted);
 }
 
+/* CSS 三角，靠 flex 的 align-items:center 精准垂直居中；展开时旋转 90° 指向下 */
 .reasoning-caret {
-  flex-shrink: 0;
-  font-size: 11px;
-  width: 12px;
+  flex: none;
+  width: 0;
+  height: 0;
+  border-left: 5px solid currentColor;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform 0.15s ease;
+}
+
+.reasoning.open .reasoning-caret {
+  transform: rotate(90deg);
 }
 
 .reasoning-label {

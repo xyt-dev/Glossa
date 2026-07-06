@@ -225,28 +225,50 @@ export default function App() {
         ...s,
         [sessionId]: { text: "", reasoning: "", mode: turnMode, user: text },
       }));
+      // 节流批量刷新：把每个 token 的 setState 合并成「每 ~60ms 一次」（≈16fps）。
+      // 流式文本是可瞥读的，不需要 60fps；关键是别让高频重渲染+文字增长的重排占满主线程——
+      // 那正是聊天思考转圈「跳跳卡卡、hover 卡死」的原因（翻译框静态文字无此问题）。
+      let bufText = "";
+      let bufReason = "";
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      const flush = () => {
+        timer = null;
+        const t = bufText;
+        const r = bufReason;
+        bufText = "";
+        bufReason = "";
+        if (!t && !r) return;
+        setStreams((s) =>
+          s[sessionId]
+            ? {
+                ...s,
+                [sessionId]: {
+                  ...s[sessionId],
+                  text: s[sessionId].text + t,
+                  reasoning: s[sessionId].reasoning + r,
+                },
+              }
+            : s,
+        );
+      };
+      const schedule = () => {
+        if (timer == null) timer = setTimeout(flush, 60);
+      };
       try {
         await api.sendMessage(sessionId, text, turnMode, (e) => {
-          if (e.type === "delta")
-            setStreams((s) =>
-              s[sessionId]
-                ? { ...s, [sessionId]: { ...s[sessionId], text: s[sessionId].text + e.text } }
-                : s,
-            );
-          else if (e.type === "reasoning")
-            setStreams((s) =>
-              s[sessionId]
-                ? {
-                    ...s,
-                    [sessionId]: { ...s[sessionId], reasoning: s[sessionId].reasoning + e.text },
-                  }
-                : s,
-            );
-          else if (e.type === "error") setError(e.message);
+          if (e.type === "delta") {
+            bufText += e.text;
+            schedule();
+          } else if (e.type === "reasoning") {
+            bufReason += e.text;
+            schedule();
+          } else if (e.type === "error") setError(e.message);
         });
       } catch (e) {
         setError(String(e));
       }
+      if (timer != null) clearTimeout(timer);
+      flush(); // 落尾：应用最后一批还没刷的缓冲
       // 回读权威状态（turn 在 done 之前已持久化）；仅在仍停留在该会话时替换视图
       try {
         const reloaded = await api.loadSession(sessionId);
