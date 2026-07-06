@@ -106,6 +106,7 @@ export interface Profile {
   model: string;
   translate_effort?: string | null;
   chat_effort?: string | null;
+  /** Protocol / provider layer: deepseek | openai | anthropic. */
   provider?: string | null;
   temperature?: number | null;
   extra?: Record<string, unknown> | null;

@@ -302,13 +302,14 @@ export default function Settings({
                   />
                 </label>
                 <label>
-                  Provider 兼容层
+                  Provider 协议层
                   <Dropdown
                     value={profile.provider ?? ""}
                     options={[
                       { value: "", label: "自动（按 URL 判断）" },
-                      { value: "deepseek", label: "DeepSeek" },
-                      { value: "openai", label: "OpenAI 标准" },
+                      { value: "deepseek", label: "DeepSeek（兼容层）" },
+                      { value: "openai", label: "OpenAI-compatible" },
+                      { value: "anthropic", label: "Anthropic / Claude 原生" },
                     ]}
                     onChange={(v) => patchProfile((p) => (p.provider = v || null))}
                   />
@@ -332,7 +333,7 @@ export default function Settings({
                   />
                 </label>
                 <label>
-                  Temperature（留空不传）
+                  Temperature（留空不传；Anthropic 原生协议不使用）
                   <input
                     type="number"
                     step={0.1}

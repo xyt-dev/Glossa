@@ -7,7 +7,8 @@ use crate::{Error, Mode, Result};
 
 /// Written verbatim on first run so the user gets a commented template.
 pub const DEFAULT_CONFIG_TOML: &str = r#"# glossa 配置文件
-# 任意 OpenAI 兼容 API 均可：填 base_url / model / api_key 即可。
+# 支持 OpenAI-compatible 与 Anthropic-native 协议：按 provider 选择协议层，
+# 再填写 base_url / model / api_key。
 
 active_profile = "deepseek"
 
@@ -40,9 +41,9 @@ model = "deepseek-v4-pro-max"
 # 思考强度（留空/删除 = no thinking）：low | medium | high | xhigh
 # translate_effort = "high"           # 翻译模式（默认 no thinking）
 chat_effort = "xhigh"                 # 聊天模式
-# provider = "deepseek"               # 可选：thinking 字段兼容层（deepseek | openai），缺省按 base_url 自动判断
-# temperature = 1.0                # 可选
-# [profiles.extra]                 # 可选，任意额外请求字段原样透传
+# provider = "deepseek"               # 可选：协议 / provider 兼容层（deepseek | openai | anthropic），缺省按 base_url 自动判断
+# temperature = 1.0                # 可选（Anthropic-native 不使用）
+# [profiles.extra]                 # 可选，额外请求字段；Anthropic-native 仅透传白名单字段
 # top_p = 0.95
 "#;
 
@@ -166,8 +167,9 @@ pub struct Profile {
     pub translate_effort: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub chat_effort: Option<String>,
-    /// Provider compat layer override ("deepseek" | "openai"). When absent the
-    /// client sniffs the base_url; set it explicitly for aggregator URLs.
+    /// Provider / protocol layer override ("deepseek" | "openai" |
+    /// "anthropic"). When absent the client sniffs the base_url; set it
+    /// explicitly for relay URLs whose protocol is ambiguous from the host.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub provider: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

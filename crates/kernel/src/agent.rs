@@ -307,7 +307,7 @@ async fn run_turn(
 mod tests {
     use super::*;
     use crate::store::Session;
-    use serde_json::json;
+    use serde_json::{json, Value};
     use wiremock::matchers::{body_partial_json, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -318,6 +318,15 @@ mod tests {
             out.push_str(&format!("data: {payload}\n\n"));
         }
         out.push_str("data: [DONE]\n\n");
+        out
+    }
+
+    fn anthropic_sse(events: &[Value]) -> String {
+        let mut out = String::new();
+        for ev in events {
+            out.push_str(&format!("data: {ev}\n\n"));
+        }
+        out.push_str("data: {\"type\":\"message_stop\"}\n\n");
         out
     }
 
@@ -344,6 +353,13 @@ mod tests {
             store,
             session,
         }
+    }
+
+    async fn anthropic_fixture(server: &MockServer) -> Fixture {
+        let mut f = fixture(server).await;
+        f.config.profiles[0].provider = Some("anthropic".into());
+        f.config.profiles[0].model = "claude-opus-4-8".into();
+        f
     }
 
     async fn collect(f: &Fixture, text: &str, mode: Mode) -> Vec<SendEvent> {
@@ -463,6 +479,108 @@ mod tests {
         let saved = f.store.load(&f.session.id).unwrap();
         assert!(saved.messages[1].result.is_none());
         assert!(saved.messages[1].raw.is_some());
+    }
+
+    #[tokio::test]
+    async fn anthropic_translate_turn_streams_parses_and_persists() {
+        let server = MockServer::start().await;
+        let good = r#"{"translation":"智能手机无处不在。","words":[{"word":"ubiquitous","ipa":"/juːˈbɪkwɪtəs/","pos":"adj.","meaning":"无处不在的","ielts_band":8,"examples":[{"en":"E","zh":"译"}]}],"sentences":[],"usages":[]}"#;
+        let (a, b) = good.split_at(16);
+        Mock::given(method("POST"))
+            .and(path("/v1/messages"))
+            .and(body_partial_json(json!({
+                "stream": true,
+                "output_config": {"format": {"type": "json_schema"}}
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(
+                anthropic_sse(&[
+                    json!({"type":"content_block_delta","delta":{"type":"text_delta","text":a}}),
+                    json!({"type":"content_block_delta","delta":{"type":"text_delta","text":b}}),
+                ]),
+                "text/event-stream",
+            ))
+            .mount(&server)
+            .await;
+
+        let f = anthropic_fixture(&server).await;
+        let events = collect(&f, "Smartphones are ubiquitous.", Mode::Translate).await;
+        assert!(events.iter().any(|e| matches!(e, SendEvent::Parsed { result } if result.translation == "智能手机无处不在。")));
+        let saved = f.store.load(&f.session.id).unwrap();
+        assert_eq!(saved.messages.len(), 2);
+        assert_eq!(saved.messages[1].result.as_ref().unwrap().words[0].word, "ubiquitous");
+    }
+
+    #[tokio::test]
+    async fn anthropic_broken_translate_output_is_repaired() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/v1/messages"))
+            .and(body_partial_json(json!({"stream": true})))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(
+                anthropic_sse(&[
+                    json!({"type":"content_block_delta","delta":{"type":"text_delta","text":"{\"translation\": \"你好\""}}),
+                    json!({"type":"content_block_delta","delta":{"type":"text_delta","text":" <-- truncated garbage"}}),
+                ]),
+                "text/event-stream",
+            ))
+            .mount(&server)
+            .await;
+        // repair call is non-streaming
+        Mock::given(method("POST"))
+            .and(path("/v1/messages"))
+            .and(body_partial_json(json!({"stream": false})))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "content": [{"type":"text","text":"{\"translation\":\"你好\",\"words\":[],\"sentences\":[],\"usages\":[]}"}]
+            })))
+            .mount(&server)
+            .await;
+
+        let f = anthropic_fixture(&server).await;
+        let events = collect(&f, "hello", Mode::Translate).await;
+        assert!(events.iter().any(|e| matches!(e, SendEvent::Parsed { result } if result.translation == "你好")));
+        let saved = f.store.load(&f.session.id).unwrap();
+        assert_eq!(saved.messages[1].result.as_ref().unwrap().translation, "你好");
+    }
+
+    #[tokio::test]
+    async fn anthropic_chat_turn_streams_markdown_and_replays_history() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/v1/messages"))
+            .and(body_partial_json(json!({"stream": true})))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(
+                anthropic_sse(&[
+                    json!({"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":"想一下"}}),
+                    json!({"type":"content_block_delta","delta":{"type":"text_delta","text":"**ubiquitous** 的意思是"}}),
+                    json!({"type":"content_block_delta","delta":{"type":"text_delta","text":"无处不在"}}),
+                ]),
+                "text/event-stream",
+            ))
+            .mount(&server)
+            .await;
+
+        let f = anthropic_fixture(&server).await;
+        let events = collect(&f, "为什么用 ubiquitous？", Mode::Chat).await;
+        let deltas: String = events
+            .iter()
+            .filter_map(|e| match e {
+                SendEvent::Delta { text } => Some(text.clone()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(deltas, "**ubiquitous** 的意思是无处不在");
+        let reasoning: String = events
+            .iter()
+            .filter_map(|e| match e {
+                SendEvent::Reasoning { text } => Some(text.clone()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(reasoning, "想一下");
+
+        let saved = f.store.load(&f.session.id).unwrap();
+        assert_eq!(saved.messages[1].text.as_deref(), Some("**ubiquitous** 的意思是无处不在"));
+        assert_eq!(saved.messages[1].reasoning.as_deref(), Some("想一下"));
     }
 
     #[tokio::test]

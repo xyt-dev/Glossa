@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 use crate::{Error, Result};
 
@@ -94,6 +95,83 @@ pub const SCHEMA_TEXT: &str = r#"{
   ]
 }"#;
 
+/// JSON Schema used for Anthropic-style structured outputs.
+pub fn output_json_schema() -> serde_json::Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "translation": { "type": "string" },
+            "sentences": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "src": { "type": "string" },
+                        "dst": { "type": "string" }
+                    },
+                    "required": ["src", "dst"],
+                    "additionalProperties": false
+                }
+            },
+            "source_lang": { "type": ["string", "null"] },
+            "target_lang": { "type": ["string", "null"] },
+            "words": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "word": { "type": "string" },
+                        "ipa": { "type": ["string", "null"] },
+                        "pos": { "type": ["string", "null"] },
+                        "meaning": { "type": ["string", "null"] },
+                        "ielts_band": { "type": ["number", "null"] },
+                        "examples": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "en": { "type": "string" },
+                                    "zh": { "type": "string" }
+                                },
+                                "required": ["en", "zh"],
+                                "additionalProperties": false
+                            }
+                        }
+                    },
+                    "required": ["word", "examples"],
+                    "additionalProperties": false
+                }
+            },
+            "usages": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "usage": { "type": "string" },
+                        "explanation": { "type": ["string", "null"] },
+                        "examples": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "en": { "type": "string" },
+                                    "zh": { "type": "string" }
+                                },
+                                "required": ["en", "zh"],
+                                "additionalProperties": false
+                            }
+                        }
+                    },
+                    "required": ["usage", "examples"],
+                    "additionalProperties": false
+                }
+            }
+        },
+        "required": ["translation", "sentences", "words", "usages"],
+        "additionalProperties": false
+    })
+}
+
 /// Best-effort extraction of the JSON object from raw model output:
 /// strips markdown fences and any prose around the outermost `{...}`.
 fn extract_json(raw: &str) -> &str {
@@ -168,6 +246,14 @@ mod tests {
         let r = parse_translation(r#"{"translation":"hi"}"#).unwrap();
         assert!(r.words.is_empty());
         assert!(r.source_lang.is_none());
+    }
+
+    #[test]
+    fn output_schema_is_strict_object() {
+        let s = output_json_schema();
+        assert_eq!(s["type"], "object");
+        assert_eq!(s["additionalProperties"], false);
+        assert!(s["properties"]["words"].is_object());
     }
 
     #[test]

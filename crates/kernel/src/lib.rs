@@ -1,4 +1,4 @@
-//! Translator kernel: UI-agnostic core (config, OpenAI-compatible client,
+//! Translator kernel: UI-agnostic core (config, provider clients,
 //! structured translation schema, vocab memory, session store, agent loop).
 
 pub mod agent;
