@@ -10,7 +10,7 @@ export interface PopoverAnchor {
 }
 
 interface Placement {
-  left: number;
+  left: number; // 浮层左边缘（不是中心点）
   top?: number;
   bottom?: number;
   up: boolean;
@@ -89,23 +89,29 @@ export default function Popover({
     const cx = anchor.cx / z;
     const aTop = anchor.top / z;
     const aBottom = anchor.bottom / z;
-    const w = el.offsetWidth;
+
+    // 可用宽度：桌面尊重 maxWidth，手机端尽量吃满屏幕但保留边距。
+    const maxAllowedW = Math.min(maxWidth, Math.max(0, viewW - MARGIN * 2));
+    const minAllowedW = Math.min(window.innerWidth <= 768 ? 300 : 360, maxAllowedW);
+    const measuredW = el.offsetWidth;
+    const w = Math.min(Math.max(measuredW, minAllowedW), maxAllowedW);
     const h = el.offsetHeight;
 
     const below = viewH - aBottom - GAP - MARGIN;
     const above = aTop - GAP - MARGIN;
     const up = h > below && above > below;
 
-    const left = Math.min(Math.max(cx, w / 2 + MARGIN), viewW - w / 2 - MARGIN);
-    // 箭头相对浮层左缘，夹在两端内侧，始终指向锚点中心
-    const arrowLeft = Math.min(Math.max(cx - (left - w / 2), 16), w - 16);
+    // 直接算左边缘：先以锚点居中，再夹住不出屏。
+    const left = Math.min(Math.max(cx - w / 2, MARGIN), viewW - w - MARGIN);
+    // 箭头相对浮层左缘，夹在两端内侧，始终尽量指向锚点中心。
+    const arrowLeft = Math.min(Math.max(cx - left, 16), w - 16);
 
     setPlace(
       up
         ? { left, bottom: viewH - aTop + GAP, up: true, arrowLeft }
         : { left, top: aBottom + GAP, up: false, arrowLeft },
     );
-  }, [anchor]);
+  }, [anchor, maxWidth]);
 
   return (
     <div
@@ -113,8 +119,18 @@ export default function Popover({
       className={`popover${place?.up ? " up" : ""}${className ? " " + className : ""}`}
       style={
         place
-          ? { left: place.left, top: place.top, bottom: place.bottom, maxWidth }
-          : { left: -9999, top: 0, maxWidth, visibility: "hidden" }
+          ? {
+              left: place.left,
+              top: place.top,
+              bottom: place.bottom,
+              maxWidth: Math.min(maxWidth, Math.max(0, window.innerWidth / uiScale - MARGIN * 2)),
+            }
+          : {
+              left: -9999,
+              top: 0,
+              maxWidth: Math.min(maxWidth, Math.max(0, window.innerWidth / uiScale - MARGIN * 2)),
+              visibility: "hidden",
+            }
       }
       onMouseDown={(e) => e.stopPropagation()}
       onTouchStart={(e) => e.stopPropagation()}

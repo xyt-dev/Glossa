@@ -662,6 +662,7 @@ input[type="number"]::-webkit-outer-spin-button {
   line-height: 2;
   color: var(--fg);
   word-break: break-word;
+  white-space: pre-wrap;
   background: color-mix(in srgb, var(--bg) 48%, transparent);
   border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
   border-radius: 12px;
@@ -708,13 +709,17 @@ input[type="number"]::-webkit-outer-spin-button {
   box-shadow: 0 1px 0 color-mix(in srgb, var(--accent-fg) 10%, transparent);
 }
 
+/* 句子之间的原始空格 / 换行 / 空行占位，保留原文排版但不参与交互 */
+.sentence-gap {
+  white-space: pre-wrap;
+}
+
 /* ---- 通用锚定浮层 Popover（句子翻译、未来阅读划词翻译复用）------------ */
 .popover {
   position: fixed;
   z-index: 70;
-  transform: translateX(-50%);
-  min-width: min(360px, 92vw);
-  /* max-width 由组件按视口传入 style；这里给回退上限 */
+  min-width: 320px;
+  /* 具体宽度由组件按当前视口内联计算；这里仅保留回退值 */
   max-width: min(720px, 94vw);
   max-height: min(58vh, 460px);
   display: flex;
@@ -729,11 +734,11 @@ input[type="number"]::-webkit-outer-spin-button {
 @keyframes pop-in {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(-4px);
+    transform: translateY(-4px);
   }
   to {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    transform: translateY(0);
   }
 }
 
@@ -790,14 +795,14 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .pop-src {
-  font-size: 16px;
+  font-size: 20px;
   color: var(--fg-muted);
-  line-height: 1.7;
+  line-height: 1.8;
   word-break: break-word;
 }
 
 .pop-dst {
-  font-size: 21px;
+  font-size: 20px;
   color: var(--fg);
   line-height: 1.8;
   word-break: break-word;
@@ -1809,8 +1814,6 @@ body.platform-web .app {
   }
 
   .popover {
-    min-width: min(300px, 94vw);
-    max-width: 94vw;
     max-height: min(68vh, 520px);
   }
 

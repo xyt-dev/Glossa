@@ -81,12 +81,20 @@ export default function Conversation({
           </div>
         );
       }
+      const prev = i > 0 ? session?.messages[i - 1] : null;
+      const sourceText =
+        m.mode === "translate" &&
+        prev?.role === "user" &&
+        prev.mode === "translate"
+          ? prev.text
+          : null;
       return (
         <div key={`${sid}:${i}`} className="turn assistant">
           {m.mode === "translate" ? (
             <TranslationBlock
               result={m.result}
               raw={m.raw}
+              sourceText={sourceText}
               markedSet={markedSet}
               onToggleMark={onToggleMark}
             />
